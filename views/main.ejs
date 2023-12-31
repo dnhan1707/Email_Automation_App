@@ -4,17 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Automation Web App</title>
+    <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <div>
-            <label for="excelFile">Upload Excel File:</label>
-            <input type="file" id="excelFile" name="excelFile">
-            <button id="submit_button">Upload</button>
-        </div>
-    </form>
 
+    <div class="menu_container">
+        <form class="box" action="/compose_email" method="post">
+            <button type="submit">Compose Email</button>
+        </form>
 
+        <form class="box" action="/Update Email" method="post">
+            <button type="submit">Update Email</button>
+        </form>
+
+        <form class="box" action="/Statistic" method="post">
+            <button type="submit">Statistics</button>
+        </form>
+    </div>
 
 </body>
 </html>

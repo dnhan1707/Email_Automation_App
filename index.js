@@ -30,13 +30,24 @@ app.use(express.static("public"));
 
 
 //Endpoints
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
     res.render("main.ejs");
 });
 
-app.post("/upload", upload.single("excelFile"), async (req, res) => {
-    const uploadedFile = req.file.buffer;
 
+app.post("/compose_email", async (req, res) => {
+    res.render("compose_email.ejs");
+});
+
+app.post("/send_email", upload.single("excelFile"), async (req, res) => {
+    const uploadedFile = req.file.buffer;
+    process_contact_file(uploadedFile);
+
+});
+
+
+async function process_contact_file(file)
+{
     try {
         const workbook = xlsx.read(uploadedFile);
         const workbook_sheet = workbook.SheetNames;
@@ -59,7 +70,7 @@ app.post("/upload", upload.single("excelFile"), async (req, res) => {
                     console.log(`Email: ${recipientEmail} already exists`);
                 } else {
                     console.error("Error inserting into the database:", err);
-                }
+                }   
             }
         }
 
@@ -70,8 +81,7 @@ app.post("/upload", upload.single("excelFile"), async (req, res) => {
         console.error("Error processing the uploaded file:", err);
         res.render("main.ejs", { error: "Error processing the file" });
     }
-});
-
+}
 
 
 
@@ -79,3 +89,9 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
   
+
+
+
+//export MJ_APIKEY_PUBLIC='bd8c6c5ade4bb14477ab8bfbe4f5d850'
+//export MJ_APIKEY_PRIVATE='a845c0074daacba1822d47151520fb69'
+//FEUMD3NDEFHJSHPJ2SQ7YNQ6

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compose Email</title>
+    <!-- Include Quill CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+    <!-- Include Quill JavaScript -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    <link rel="stylesheet" href="/styles/compose_email.css">
+</head>
+<body>
+
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="subject">Subject:</label>
+            <input type="text" id="subject" name="subject" required>
+        </div>
+        
+        <div>
+            <label for="text_part">Text Part:</label>
+            <div id="editor" style="height: 200px;"></div>
+        </div>
+
+        <div>
+            <label for="excelFile">Upload Customer Contacts:</label>
+            <input type="file" id="excelFile" name="excelFile">
+            <button id="submit_button">Send Email</button>
+        </div>
+    </form>
+
+
+
+    <script>
+        var toolbarOptions = [
+        ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+        ['blockquote', 'code-block'],
+
+        [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+        [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+        [{ 'direction': 'rtl' }],                         // text direction
+
+        [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+
+        [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+        [{ 'font': [] }],
+        [{ 'align': [] }],
+
+        ['clean'],                                         // remove formatting button
+
+        ['image']
+
+        ];
+
+        var quill = new Quill('#editor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: {
+                        container: toolbarOptions
+                    }
+                },
+            });
+
+
+        
+    </script>
+</body>
+</html>
