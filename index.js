@@ -120,8 +120,15 @@ async function process_email(recipientName, recipientEmail, subject, html_part, 
                         },
                     ],
                     "Subject": subject,
-                    "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> ${html_part}`,
-                    "InlinedAttachments": imageDataArray
+                    "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> <p>hi</p><img src=\"cid:id1\">`,
+                    "InlinedAttachments": [
+                        {
+                            ContentType: "image/png",
+                            Filename: "icons8-smile-30.png",
+                            ContentID: "id1",
+                            Base64Content: imageDataArray
+                        }
+                    ]
                 },
             ],
         });
