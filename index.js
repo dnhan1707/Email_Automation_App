@@ -101,7 +101,7 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
 
 async function process_email(recipientName, recipientEmail, subject, html_part, imageDataArray)
 {
-    console.log(imageDataArray.length);
+    console.log(imageDataArray);
 
     if(imageDataArray.length > 0)
     {
@@ -130,7 +130,7 @@ async function process_email(recipientName, recipientEmail, subject, html_part, 
                 console.log(result.body);
             })
             .catch((err) => {
-                console.log("Could not send email");
+                console.log("Could not send email picture");
             });
     }
     else
