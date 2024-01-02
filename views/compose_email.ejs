@@ -116,7 +116,7 @@
                 counter++;
                 });
                             // Convert the array to a JSON string
-                const imageDataArrayJSON = JSON.stringify(imageDataArray);
+                // const imageDataArrayJSON = JSON.stringify(imageDataArray);
 
                 // Use the modifyHtmlContent function to replace inline images with <img> tags
                 let modifiedHtmlContent = htmlContent;
@@ -130,7 +130,7 @@
 
                 // Set the values of the hidden input fields
                 document.getElementById('modifiedHtmlContent').value = modifiedHtmlContent;
-                document.getElementById('imageDataArray').value = imageDataArrayJSON;
+                document.getElementById('imageDataArray').value = JSON.stringify(imageDataArray);
             }
             else
             {
