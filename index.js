@@ -5,7 +5,7 @@ import pg from "pg";
 import multer from "multer"; // Import multer
 import xlsx from "xlsx";
 
-const mailjet = Mailjet.apiConnect( 
+const mailjet = Mailjet.connect( 
     process.env.MJ_APIKEY_PUBLIC,
     process.env.MJ_APIKEY_PRIVATE,
 );
@@ -16,12 +16,20 @@ const upload = multer({ storage: storage });
 
 //Postgresql
 const db = new pg.Client({
-    user: "postgres",
-    host: "localhost",
-    database: "customer",
-    password: "nhancho1707",
-    port: 5432
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT
 });
+
+let message = {
+    From: {
+        Email: process.env.SENDER_EMAIL,
+        Name: "BET Club",
+    },
+    // ...
+};
 
 db.connect();
 
@@ -47,14 +55,19 @@ app.post("/compose_email", async (req, res) => {
 });
 
 app.post("/send_email", upload.single("excelFile"), async (req, res) => {
-    const uploadedFile = req.file.buffer;
-    const subject = req.body.subject;
-    const modifiedHtmlContent = req.body.modifiedHtmlContent;
-    const imageDataArray = JSON.parse(req.body.imageDataArray);
-    
-    console.log("modifiedHtmlContent ", modifiedHtmlContent);
-    await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray);
-    res.redirect("/");
+    try {
+        const uploadedFile = req.file.buffer;
+        const subject = req.body.subject;
+        const modifiedHtmlContent = req.body.modifiedHtmlContent;
+        const imageDataArray = JSON.parse(req.body.imageDataArray);
+        
+        console.log("modifiedHtmlContent ", modifiedHtmlContent);
+        await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray);
+        res.redirect("/");
+    } catch (err) {
+        console.error("Error in /send_email endpoint:", err);
+        res.status(500).send('An error occurred while sending the email');
+    }
 });
 
 
@@ -63,6 +76,7 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
 {
 
     try {
+        let stringifiedImageDataArray = JSON.stringify(imageDataArray);
         const workbook = xlsx.read(uploadedFile);
         const workbook_sheet = workbook.SheetNames;
         const workbook_response = xlsx.utils.sheet_to_json(
@@ -76,20 +90,30 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
             await process_email(name, recipientEmail, subject, modifiedHtmlContent, imageDataArray);
 
             // Insert customers' contacts
-            // try {
-            //     await db.query(
-            //         "INSERT INTO customer_contact (name, email) VALUES ($1, $2)",
-            //         [name, recipientEmail]
-            //     );
-            // } catch (err) {
-            //     if (err.code === '23505') {
-            //         console.log(`Email: ${recipientEmail} already exists`);
-            //     } else {
-            //         console.error("Error inserting into the database:", err);
-            //     }   
-            // }
+            try {
+                await db.query(
+                    "INSERT INTO customer_contact (name, email_address) VALUES ($1, $2)",
+                    [name, recipientEmail]
+                );
+            } catch (err) {
+                if (err.code === '23505') {
+                    console.log(`Email: ${recipientEmail} already exists`);
+                } else {
+                    console.error("Error inserting into the database:", err);
+                }   
+            }
         }
         const timestamp = new Date();
+
+        //Insert email history
+        try {
+            await db.query(
+                "INSERT INTO email (sender_email, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5)",
+                ["dnhan1707@gmail.com", subject, modifiedHtmlContent, timestamp, stringifiedImageDataArray]
+            )
+        } catch (error) {
+            console.error("Error inserting into the email table:", error);
+        }
 
     } catch (err) {
         console.error("Error processing the uploaded file:", err);
@@ -98,68 +122,43 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
 }
 
 
-async function process_email(recipientName, recipientEmail, subject, html_part, imageDataArray)
-{
-    if (imageDataArray.length > 0) {
-
-        console.log(imageDataArray);
-
-        const request = mailjet
-        .post("send", { version: "v3.1" })
-        .request({
-            Messages: [
+async function process_email(recipientName, recipientEmail, subject, html_part, imageDataArray) {
+    try {
+        let message = {
+            From: {
+                Email: process.env.SENDER_EMAIL,
+                Name: "BET Club",
+            },
+            To: [
                 {
-                    From: {
-                        Email: "dnhan1707@gmail.com",
-                        Name: "BET Club",
-                    },
-                    To: [
-                        {   
-                            Email: recipientEmail,
-                        },
-                    ],
-                    "Subject": subject,
-                    "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> ${html_part}`,
-                    "InlinedAttachments": imageDataArray
+                    Email: recipientEmail,
                 },
             ],
-        });
-        request
-            .then((result) => {
-                console.log(result.body);
-            })
-            .catch((err) => {
-                console.log("Could not send email picture");
+            "Subject": subject,
+            "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> ${html_part}`,
+        };
+
+        if (imageDataArray.length > 0) {
+            message["InlinedAttachments"] = imageDataArray;
+        }
+
+        const request = mailjet
+            .post("send", { version: "v3.1" })
+            .request({
+                Messages: [message],
             });
-    }
-    else
-    {
-        const request = mailjet
-        .post("send", { version: "v3.1" })
-        .request({
-            Messages: [
-                {
-                    From: {
-                        Email: "dnhan1707@gmail.com",
-                        Name: "BET Club",
-                    },
-                    To: [
-                        {
-                            Email: recipientEmail,
-                        },
-                    ],
-                    "Subject": subject,
-                    "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> ${html_part}`,
-                },
-            ],
-        });
+
         request
             .then((result) => {
                 console.log(result.body);
             })
             .catch((err) => {
                 console.log("Could not send email");
+                throw err;
             });
+    } catch (err) {
+        console.error("Error in process_email function:", err);
+        throw err;
     }
 }
 
@@ -167,9 +166,3 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
   
-
-
-
-//export MJ_APIKEY_PUBLIC='bd8c6c5ade4bb14477ab8bfbe4f5d850'
-//export MJ_APIKEY_PRIVATE='a845c0074daacba1822d47151520fb69'
-//FEUMD3NDEFHJSHPJ2SQ7YNQ6
