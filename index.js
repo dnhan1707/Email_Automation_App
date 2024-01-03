@@ -50,11 +50,11 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
     const uploadedFile = req.file.buffer;
     const subject = req.body.subject;
     const modifiedHtmlContent = req.body.modifiedHtmlContent;
-    const imageDataArray = req.body.imageDataArray; // Parse JSON data
-
+    const imageDataArray = JSON.parse(req.body.imageDataArray);
+    
     console.log("modifiedHtmlContent ", modifiedHtmlContent);
     await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray);
-    res.status(200).send("Excel file successfully uploaded.");
+    res.redirect("/");
 });
 
 
@@ -89,8 +89,7 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
             //     }   
             // }
         }
-
-        // If all inserts were successful, redirect
+        const timestamp = new Date();
 
     } catch (err) {
         console.error("Error processing the uploaded file:", err);
@@ -105,40 +104,33 @@ async function process_email(recipientName, recipientEmail, subject, html_part, 
 
         console.log(imageDataArray);
 
-        // const request = mailjet
-        // .post("send", { version: "v3.1" })
-        // .request({
-        //     Messages: [
-        //         {
-        //             From: {
-        //                 Email: "dnhan1707@gmail.com",
-        //                 Name: "BET Club",
-        //             },
-        //             To: [
-        //                 {   
-        //                     Email: recipientEmail,
-        //                 },
-        //             ],
-        //             "Subject": subject,
-        //             "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> <p>hi</p><img src=\"cid:id1\">`,
-        //             "InlinedAttachments": [
-        //                 {
-        //                     ContentType: "image/png",
-        //                     Filename: "icons8-smile-30.png",
-        //                     ContentID: "id1",
-        //                     Base64Content: "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAACXBIWXMAAAsTAAALEwEAmpwYAAABtElEQVR4nO2WS04CQRCGv7hVdi5UMEYlwl0U1z6iewQXRo4g7t2J8QAGxYUKnoArYEg8hIobhAmmk5+kM7GH5qFxwZd0MpmpR1dNV1XDlH/IMpAHnoEX4FPLPNeAHJCYpMM4UAI6QG/ACoAysDKu023gQ0bbwA2wA6SAWS3zvKtvbckancyoTo8VQU9RrHrorAF3VvTm1wwdaQB0gZMRNn0q3WCYyONWekdxajs3Nt6BRR+Fayu941KRrZJPyXR1SHz+6SDWZaujTDrJa4fmhE6KsmweRQnVJGTKY1Lsy+ZTlFBTQhuh9+fqUsUIXZdMSjZNh3PSP82x0PuW1RhcuGRiHrpOx0UZPovQdcl4OW46Uj0Oadls/MvDlfvFcspGCSVU7G01/DAP+h0HwILWIfDqiCjp20AMV9qhmTJhHiNmcfUH+Xt9u8SDJet0m0ZvM6MI69YNpK4MmG82Bdl4U2a8yFhjMezch4I1FjeHVc5bF4GKGv4gklZ6Ax3WkdjSPO1ffcwJ3VNtzmmlVTK3wJeV3qEjDTMPXHhe9jqavV6D35e4arGqLtTSaqiUsj4lM4W/5htQBKXMvXFg5AAAAABJRU5ErkJggg=="
-        //                 }
-        //             ]
-        //         },
-        //     ],
-        // });
-        // request
-        //     .then((result) => {
-        //         console.log(result.body);
-        //     })
-        //     .catch((err) => {
-        //         console.log("Could not send email picture");
-        //     });
+        const request = mailjet
+        .post("send", { version: "v3.1" })
+        .request({
+            Messages: [
+                {
+                    From: {
+                        Email: "dnhan1707@gmail.com",
+                        Name: "BET Club",
+                    },
+                    To: [
+                        {   
+                            Email: recipientEmail,
+                        },
+                    ],
+                    "Subject": subject,
+                    "HTMLPart": `<h3> Dear ${recipientName},</h3> </br> ${html_part}`,
+                    "InlinedAttachments": imageDataArray
+                },
+            ],
+        });
+        request
+            .then((result) => {
+                console.log(result.body);
+            })
+            .catch((err) => {
+                console.log("Could not send email picture");
+            });
     }
     else
     {
