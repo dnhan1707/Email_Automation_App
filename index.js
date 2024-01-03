@@ -70,7 +70,6 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
     }
 });
 
-
 //Process Customer Contact File
 async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray)
 {
