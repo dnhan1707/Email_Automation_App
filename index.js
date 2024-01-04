@@ -4,8 +4,10 @@ import Mailjet from 'node-mailjet';
 import pg from "pg";
 import multer from "multer"; // Import multer
 import xlsx from "xlsx";
+import dotenv from 'dotenv';
+dotenv.config();
 
-const mailjet = Mailjet.connect( 
+const mailjet = Mailjet.apiConnect( 
     process.env.MJ_APIKEY_PUBLIC,
     process.env.MJ_APIKEY_PRIVATE,
 );
@@ -13,6 +15,7 @@ const mailjet = Mailjet.connect(
 // Multer setup
 const storage = multer.memoryStorage(); // Store the file in memory
 const upload = multer({ storage: storage });
+upload.array('field');
 
 //Postgresql
 const db = new pg.Client({
@@ -23,13 +26,6 @@ const db = new pg.Client({
     port: process.env.DB_PORT
 });
 
-let message = {
-    From: {
-        Email: process.env.SENDER_EMAIL,
-        Name: "BET Club",
-    },
-    // ...
-};
 
 db.connect();
 
@@ -61,7 +57,9 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
         const modifiedHtmlContent = req.body.modifiedHtmlContent;
         const imageDataArray = JSON.parse(req.body.imageDataArray);
         
-        console.log("modifiedHtmlContent ", modifiedHtmlContent);
+        console.log("imageDataArray ", imageDataArray);
+
+
         await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray);
         res.redirect("/");
     } catch (err) {
@@ -75,7 +73,6 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
 {
 
     try {
-        let stringifiedImageDataArray = JSON.stringify(imageDataArray);
         const workbook = xlsx.read(uploadedFile);
         const workbook_sheet = workbook.SheetNames;
         const workbook_response = xlsx.utils.sheet_to_json(
@@ -89,30 +86,30 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
             await process_email(name, recipientEmail, subject, modifiedHtmlContent, imageDataArray);
 
             // Insert customers' contacts
-            try {
-                await db.query(
-                    "INSERT INTO customer_contact (name, email_address) VALUES ($1, $2)",
-                    [name, recipientEmail]
-                );
-            } catch (err) {
-                if (err.code === '23505') {
-                    console.log(`Email: ${recipientEmail} already exists`);
-                } else {
-                    console.error("Error inserting into the database:", err);
-                }   
-            }
+            // try {
+            //     await db.query(
+            //         "INSERT INTO customer_contact (name, email_address) VALUES ($1, $2)",
+            //         [name, recipientEmail]
+            //     );
+            // } catch (err) {
+            //     if (err.code === '23505') {
+            //         console.log(`Email: ${recipientEmail} already exists`);
+            //     } else {
+            //         console.error("Error inserting into the database:", err);
+            //     }   
+            // }
         }
-        const timestamp = new Date();
+        // const timestamp = new Date();
 
-        //Insert email history
-        try {
-            await db.query(
-                "INSERT INTO email (sender_email, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5)",
-                ["dnhan1707@gmail.com", subject, modifiedHtmlContent, timestamp, stringifiedImageDataArray]
-            )
-        } catch (error) {
-            console.error("Error inserting into the email table:", error);
-        }
+        // //Insert email history
+        // try {
+        //     await db.query(
+        //         "INSERT INTO email (sender_email, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5)",
+        //         ["dnhan1707@gmail.com", subject, modifiedHtmlContent, timestamp, stringifiedImageDataArray]
+        //     )
+        // } catch (error) {
+        //     console.error("Error inserting into the email table:", error);
+        // }
 
     } catch (err) {
         console.error("Error processing the uploaded file:", err);
