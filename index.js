@@ -15,7 +15,9 @@ const mailjet = Mailjet.apiConnect(
 // Multer setup
 const storage = multer.memoryStorage(); // Store the file in memory
 const upload = multer({ storage: storage });
-upload.array('field');
+multer({
+    limits: { fieldSize: 1000 * 1024 * 1024 }  //1GB
+  })
 
 //Postgresql
 const db = new pg.Client({
