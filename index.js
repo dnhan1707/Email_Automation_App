@@ -57,6 +57,8 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
         const uploadedFile = req.file.buffer;
         const subject = req.body.subject;
         const modifiedHtmlContent = req.body.modifiedHtmlContent;
+        console.log(modifiedHtmlContent);
+
         const imageDataArray = JSON.parse(req.body.imageDataArray);
         const status = req.body.status;
 
