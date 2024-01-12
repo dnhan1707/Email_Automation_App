@@ -57,14 +57,15 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
         const uploadedFile = req.file.buffer;
         const subject = req.body.subject;
         const modifiedHtmlContent = req.body.modifiedHtmlContent;
-        console.log(modifiedHtmlContent);
-
-        const imageDataArray = JSON.parse(req.body.imageDataArray);
+        const imageDataArray = req.body.imageDataArray;
         const status = req.body.status;
+
+        console.log("modifiedHtmlContent: ", modifiedHtmlContent);
+        console.log("imageDataArray: ", imageDataArray);
 
         console.log("status: ", status);
 
-        await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray, status);
+        // await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray, status);
         res.redirect("/");
     } catch (err) {
         console.error("Error in /send_email endpoint:", err);
