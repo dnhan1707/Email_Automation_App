@@ -49,24 +49,26 @@ app.get("/", async (req, res) => {
 
     
 app.post("/compose_email", async (req, res) => {
-    res.render("compose_email.ejs");
+    res.render("compose.ejs");
 });
 
 app.post("/send_email", upload.single("excelFile"), async (req, res) => {
     try {
         const uploadedFile = req.file.buffer;
         const subject = req.body.subject;
-        const modifiedHtmlContent = req.body.modifiedHtmlContent;
-        const imageDataArray = req.body.imageDataArray;
+        const htmlPart = req.body.modifiedHtmlContent;
+        const imageDataArray = JSON.parse(req.body.imageDataArray);
         const status = req.body.status;
 
-        console.log("modifiedHtmlContent: ", modifiedHtmlContent);
+        console.log("subject: ", subject);
+        console.log("htmlPart: ", htmlPart);
         console.log("imageDataArray: ", imageDataArray);
-
         console.log("status: ", status);
 
-        // await process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray, status);
+        await process_contact_file(uploadedFile, subject, htmlPart, imageDataArray, status);
+
         res.redirect("/");
+
     } catch (err) {
         console.error("Error in /send_email endpoint:", err);
         res.status(500).send('An error occurred while sending the email');
@@ -75,11 +77,15 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
 
 //Process Customer Contact File
 /// add status
-async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, imageDataArray, status)
+async function process_contact_file(uploadedFile, subject, htmlPart, imageDataArray, status)
 {
 
     try {
-        const base64content = imageDataArray[0].Base64Content;
+        let base64content = "";
+        if(imageDataArray.length > 0)
+        {
+            base64content = imageDataArray[0].Base64Content;
+        }
         const workbook = xlsx.read(uploadedFile);
         const workbook_sheet = workbook.SheetNames;
         const workbook_response = xlsx.utils.sheet_to_json(
@@ -87,7 +93,7 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
         );
 
         //Insert email
-        insertEmailTable(subject, modifiedHtmlContent, base64content, status);
+        insertEmailTable(subject, htmlPart, base64content, status);
 
         //Get current email id
         const emailID = getCurrentEmailId();
@@ -100,7 +106,7 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
             insertCustomerContact(name, recipientEmail);
             if(status === 'sent')
             {
-                await process_email(emailID, name, recipientEmail, subject, modifiedHtmlContent, imageDataArray);
+                await process_email(emailID, name, recipientEmail, subject, htmlPart, imageDataArray);
             }
             else
             {
@@ -110,7 +116,6 @@ async function process_contact_file(uploadedFile, subject, modifiedHtmlContent, 
 
     } catch (err) {
         console.error("Error processing the uploaded file:", err);
-        res.render("main.ejs", { error: "Error processing the file" });
     }
 }
 
@@ -167,14 +172,14 @@ app.listen(port, () => {
   
 
 
-async function insertEmailTable(subject, modifiedHtmlContent, base64content, status)
+async function insertEmailTable(subject, htmlPart, base64content, status)
 {
     const timestamp = new Date();
 
     try {
         await db.query(
             "INSERT INTO email (status, sender_email, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5, $6)",
-            [status, process.env.SENDER_EMAIL, subject, modifiedHtmlContent, timestamp, base64content]
+            [status, process.env.SENDER_EMAIL, subject, htmlPart, timestamp, base64content]
         )
 
         console.log("Inserted email table");
@@ -216,11 +221,11 @@ async function insertCustomerContact(name, recipientEmail)
 
 async function insertRecordTable(recipientEmail, emailId)
 {
-    const customerIdResult = await db.query(
-        "SELECT id FROM customer_contact WHERE email_address = $1",
-        [recipientEmail]
-    )
     try {
+        const customerIdResult = await db.query(
+            "SELECT id FROM customer_contact WHERE email_address = $1",
+            [recipientEmail]
+        )
         const customerId = customerIdResult.rows[0].customer_id;
 
         // Insert into the history table
