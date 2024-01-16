@@ -76,7 +76,6 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
 });
 
 //Process Customer Contact File
-/// add status
 async function process_contact_file(uploadedFile, subject, htmlPart, imageDataArray, status)
 {
 
