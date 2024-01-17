@@ -60,11 +60,6 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
         const imageDataArray = JSON.parse(req.body.imageDataArray);
         const status = req.body.status;
 
-        console.log("subject: ", subject);
-        console.log("htmlPart: ", htmlPart);
-        console.log("imageDataArray: ", imageDataArray);
-        console.log("status: ", status);
-
         await process_contact_file(uploadedFile, subject, htmlPart, imageDataArray, status);
 
         res.redirect("/");
@@ -92,17 +87,21 @@ async function process_contact_file(uploadedFile, subject, htmlPart, imageDataAr
         );
 
         //Insert email
-        insertEmailTable(subject, htmlPart, base64content, status);
+        await insertEmailTable(status);
 
         //Get current email id
-        const emailID = getCurrentEmailId();
+        const emailID = await getCurrentEmailId();
+
+        //Insert email_content
+        await insertEmailContentTable(emailID, subject, htmlPart, base64content);
+
 
         for (const row of workbook_response) {
             const name = row['Full Name'];
             const recipientEmail = row['Email'];
 
             //Insert customers' contacts
-            insertCustomerContact(name, recipientEmail);
+            await insertCustomerContact(name, recipientEmail);
             if(status === 'sent')
             {
                 await process_email(emailID, name, recipientEmail, subject, htmlPart, imageDataArray);
@@ -110,6 +109,8 @@ async function process_contact_file(uploadedFile, subject, htmlPart, imageDataAr
             else
             {
                 console.log("Email was saved");
+                await insertRecordTable(recipientEmail, emailID);
+
             }
         }
 
@@ -157,7 +158,7 @@ async function process_email(emailID, recipientName, recipientEmail, subject, ht
             });
         
         //Insert record table
-        insertRecordTable(recipientEmail, emailID);
+        await insertRecordTable(recipientEmail, emailID);
 
     } catch (err) {
         console.error("Error in process_email function:", err);
@@ -171,17 +172,34 @@ app.listen(port, () => {
   
 
 
-async function insertEmailTable(subject, htmlPart, base64content, status)
+async function insertEmailTable(status)
 {
-    const timestamp = new Date();
-
     try {
         await db.query(
-            "INSERT INTO email (status, sender_email, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5, $6)",
-            [status, process.env.SENDER_EMAIL, subject, htmlPart, timestamp, base64content]
-        )
+            "INSERT INTO email (status, sender_email) VALUES ($1, $2) RETURNING id",
+            [status, process.env.SENDER_EMAIL]
+        );        
 
         console.log("Inserted email table");
+    } catch (error) {
+        console.error("Error inserting into the email table:", error);
+    }
+};
+
+
+async function insertEmailContentTable(emailID, subject, body, image_data)
+{
+    try {
+        //Need to query ID
+        const timestamp = new Date();
+        console.log("Values before query:", emailID, subject, body, timestamp);
+
+        await db.query(
+            "INSERT INTO email_content (id, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5)",
+            [emailID, subject, body, timestamp, image_data]
+        )
+
+        console.log("Inserted email_content table");
     } catch (error) {
         console.error("Error inserting into the email table:", error);
     }
@@ -222,10 +240,10 @@ async function insertRecordTable(recipientEmail, emailId)
 {
     try {
         const customerIdResult = await db.query(
-            "SELECT id FROM customer_contact WHERE email_address = $1",
+            "SELECT id FROM customer_contact WHERE LOWER(email_address) = LOWER($1)",
             [recipientEmail]
         )
-        const customerId = customerIdResult.rows[0].customer_id;
+        const customerId = customerIdResult.rows[0].id;
 
         // Insert into the history table
         await db.query(

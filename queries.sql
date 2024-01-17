@@ -1,14 +1,20 @@
+DROP TABLE record;
+DROP TABLE email_content;
+DROP TABLE email;
+DROP TABLE customer_contact;
+
+
 CREATE TABLE customer_contact(
-    id PRIMARY KEY,
+    id serial PRIMARY KEY,
     name VARCHAR(25),
     email_address TEXT UNIQUE
 );
 
 
 CREATE TABLE email(
-    id PRIMARY KEY,
+    id serial PRIMARY KEY,
     status VARCHAR(10),
-    sender_email TEXT,
+    sender_email TEXT
 );
 
 
@@ -26,4 +32,3 @@ CREATE TABLE record(
     customer_id INT REFERENCES customer_contact(id),
     PRIMARY KEY (email_id, customer_id)
 );
-
