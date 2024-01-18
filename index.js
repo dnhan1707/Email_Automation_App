@@ -48,6 +48,13 @@ app.get("/", async (req, res) => {
 });
 
     
+app.get("/history", async (req, res) => {
+    const emails = await queryAllEmail();
+    res.render("history.ejs", {
+        emails: emails
+    });
+});
+
 app.post("/compose_email", async (req, res) => {
     res.render("compose.ejs");
 });
@@ -256,3 +263,17 @@ async function insertRecordTable(recipientEmail, emailId)
         console.error(`Customer with email ${recipientEmail} not found.`);
     }
 };
+
+
+async function queryAllEmail()
+{
+    try{
+        const result = await db.query(
+            "SELECT * FROM email_content"
+        )
+        
+        return result.rows;
+    }catch (err) {
+        console.log("Error in queryAllEmail method");
+    }
+}
