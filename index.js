@@ -81,6 +81,18 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
     }
 });
 
+
+app.get("/view/:id", async(req, res) => {
+    const reqID = req.params.id;
+    const emails = await queryEmailWithId(reqID);
+    console.log(emails);
+
+
+    res.render("modify.ejs", {
+        emails: emails
+    })
+})
+
 //Process Customer Contact File
 async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status)
 {
@@ -282,5 +294,18 @@ async function queryAllEmail()
         return result.rows;
     }catch (err) {
         console.log("Error in queryAllEmail method");
+    }
+}
+
+
+async function queryEmailWithId(id){
+    try{
+        const result = await db.query(
+            "SELECT * FROM email_content WHERE id = ($1)", [id]
+        )
+
+        return result.rows[0];
+    }catch (err) {
+        console.log("Error in queryEmailWithId method");
     }
 }
