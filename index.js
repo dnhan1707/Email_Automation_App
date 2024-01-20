@@ -61,13 +61,17 @@ app.post("/compose_email", async (req, res) => {
 
 app.post("/send_email", upload.single("excelFile"), async (req, res) => {
     try {
+        const pureHtml = req.body.pureHtml;
         const uploadedFile = req.file.buffer;
         const subject = req.body.subject;
         const htmlPart = req.body.modifiedHtmlContent;
         const imageDataArray = JSON.parse(req.body.imageDataArray);
         const status = req.body.status;
 
-        await process_contact_file(uploadedFile, subject, htmlPart, imageDataArray, status);
+        //Insert email
+        await insertEmailTable();
+
+        await process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status);
 
         res.redirect("/");
 
@@ -78,30 +82,33 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
 });
 
 //Process Customer Contact File
-async function process_contact_file(uploadedFile, subject, htmlPart, imageDataArray, status)
+async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status)
 {
 
     try {
-        let base64content = "";
-        if(imageDataArray.length > 0)
-        {
-            base64content = imageDataArray[0].Base64Content;
-        }
+        // let base64content = "";
+        // if(imageDataArray.length > 0)
+        // {
+        //     base64content = imageDataArray[0].Base64Content;
+        // }
         const workbook = xlsx.read(uploadedFile);
         const workbook_sheet = workbook.SheetNames;
         const workbook_response = xlsx.utils.sheet_to_json(
             workbook.Sheets[workbook_sheet[0]]
         );
 
-        //Insert email
-        await insertEmailTable(status);
+        // //Insert email
+        // await insertEmailTable(status);
 
         //Get current email id
         const emailID = await getCurrentEmailId();
 
-        //Insert email_content
-        await insertEmailContentTable(emailID, subject, htmlPart, base64content);
+        // //Insert email_content
+        // await insertEmailContentTable(emailID, subject, htmlPart, base64content);
 
+
+        //Insert email_content
+        await insertEmailContentTable(emailID, status, subject, pureHtml);
 
         for (const row of workbook_response) {
             const name = row['Full Name'];
@@ -179,12 +186,12 @@ app.listen(port, () => {
   
 
 
-async function insertEmailTable(status)
+async function insertEmailTable()
 {
     try {
         await db.query(
-            "INSERT INTO email (status, sender_email) VALUES ($1, $2) RETURNING id",
-            [status, process.env.SENDER_EMAIL]
+            "INSERT INTO email (sender_email) VALUES ($1)",
+            [process.env.SENDER_EMAIL]
         );        
 
         console.log("Inserted email table");
@@ -194,16 +201,16 @@ async function insertEmailTable(status)
 };
 
 
-async function insertEmailContentTable(emailID, subject, body, image_data)
+async function insertEmailContentTable(emailID, status, subject, body)
 {
     try {
         //Need to query ID
         const timestamp = new Date();
-        console.log("Values before query:", emailID, subject, body, timestamp);
+        console.log("Values before query:", emailID, status, subject, body, timestamp);
 
         await db.query(
-            "INSERT INTO email_content (id, subject, body, sent_at, image_data)  VALUES ($1, $2, $3, $4, $5)",
-            [emailID, subject, body, timestamp, image_data]
+            "INSERT INTO email_content (id, status, subject, body, sent_at)  VALUES ($1, $2, $3, $4, $5)",
+            [emailID, status, subject, body, timestamp]
         )
 
         console.log("Inserted email_content table");

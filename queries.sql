@@ -13,17 +13,16 @@ CREATE TABLE customer_contact(
 
 CREATE TABLE email(
     id serial PRIMARY KEY,
-    status VARCHAR(10),
     sender_email TEXT
 );
 
 
 CREATE TABLE email_content(
     id int REFERENCES email(id),
+    status VARCHAR(10),
     subject text,
     body text,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    image_data TEXT
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 

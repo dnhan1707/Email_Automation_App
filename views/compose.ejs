@@ -32,6 +32,9 @@
 
         <input type="hidden" id="modifiedHtmlContent" name="modifiedHtmlContent">
         <input type="hidden" id="imageDataArray" name="imageDataArray">
+        <input type="hidden" id="pureHtml" name="pureHtml">
+
+
         <button type="submit" name="status" value="sent">Send Email</button>
         <button type="submit" name="status" value="saved">Save Email</button>
 
@@ -70,6 +73,7 @@
         
     document.getElementById('emailForm').addEventListener('submit', function () {
         let justHtml = quill.root.innerHTML;
+        document.getElementById('pureHtml').value = justHtml;
 
         // Process the HTML content to meet Maijet API requirements
         let processedHtml = processHtmlForMaijet(justHtml);
@@ -86,7 +90,7 @@
 
         }
     });
-
+    
     function processHtmlForMaijet(htmlContent) {
         if (checkIfOnlyHasImg(htmlContent)) {
             return processHtmlWithImg(htmlContent);
