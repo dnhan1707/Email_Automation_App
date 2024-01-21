@@ -5,7 +5,12 @@ import pg from "pg";
 import multer from "multer"; // Import multer
 import xlsx from "xlsx";
 import dotenv from 'dotenv';
+import bcrypt, { hash } from 'bcrypt'
+
+
 dotenv.config();
+
+const saltround = 10;
 
 const mailjet = Mailjet.apiConnect( 
     process.env.MJ_APIKEY_PUBLIC,
@@ -44,7 +49,7 @@ app.use(express.static("public"));
 
 //Endpoints
 app.get("/", async (req, res) => {
-    res.render("main.ejs");
+    res.render("homepage.ejs");
 });
 
     
@@ -91,6 +96,83 @@ app.get("/view/:id", async(req, res) => {
     res.render("modify.ejs", {
         emails: emails
     })
+})
+
+
+app.get("/login", async(req, res) => {
+    res.render("login.ejs");
+})
+
+
+app.post("/login", async(req, res) =>{
+    const loginEmail = req.body.loginEmail;
+    const loginPassword = req.body.loginPassword;
+
+    try {
+        const result = await db.query(
+            "SELECT * FROM users WHERE email = $1", [loginEmail]
+        )
+        
+        if(result.rows.length > 0)
+        {
+            const user = result.rows[0];
+            const storedPassword = user.password;
+
+            //Verify password
+            bcrypt.compare(loginPassword, storedPassword, (err, result) => {
+                if(err){
+                    console.error("Error comparing passwords:", err);
+                } else {
+                    if(result){
+                        res.render("main.ejs");
+                    } else {
+                        res.send("Incorrect Password");
+                    }
+                }
+            })
+        } else {
+            res.send("User not found");
+        }
+    } catch (err) {
+        console.log(err);
+    }
+
+})
+
+
+app.get("/register", async(req, res) => {
+    res.render("register.ejs");
+})
+
+app.post("/register", async(req, res) => {
+    const loginEmail = req.body.loginEmail;
+    const loginPassword = req.body.loginPassword;
+
+    try {
+        const result = await db.query(
+            "SELECT * FROM users WHERE email = $1", [loginEmail]
+        )
+
+        if(result.rows.length > 0)
+        {
+            res.send("Email Already exist, try to login please");
+        } else {
+            bcrypt.hash(loginPassword, saltround, async (err, hash) => {
+                if(err)
+                {
+                    console.error("Error in hashing password");
+                }else{
+                    await db.query(
+                        "INSERT INTO users (email, password) VALUES ($1, $2)",
+                        [loginEmail, hash]
+                    );
+                    res.redirect("/login");
+                }
+            })
+        }
+    }catch(err){
+        console.log(err);
+    }
 })
 
 //Process Customer Contact File
