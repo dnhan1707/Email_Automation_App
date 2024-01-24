@@ -87,10 +87,6 @@ app.get("/history", async (req, res) => {
 });
 
 
-app.get("/register", async(req, res) => {
-    res.render("register.ejs");
-})
-
 app.get("/view/:id", async(req, res) => {
     if(req.isAuthenticated()) {
         const reqID = req.params.id;
@@ -106,13 +102,29 @@ app.get("/view/:id", async(req, res) => {
     }
 })
 
+app.get("/register", async(req, res) => {
+    res.render("register.ejs");
+})
+
+
 
 app.get("/login", async(req, res) => {
     res.render("login.ejs");
 })
 
 
-app.get("/auth/google/secrets", 
+app.get("/logout", (req, res) => {
+    req.logout((err) => {
+        if(err){
+            console.log(err);
+        } else {
+            res.redirect("/");
+        }
+    })
+})
+
+app.get(
+    "/auth/google/secrets", 
     passport.authenticate("google", {
     successRedirect: "/main_page",
     failureRedirect: "/"
@@ -126,15 +138,7 @@ app.get(
 }))
 
 
-app.get("/logout", (req, res) => {
-    req.logout((err) => {
-        if(err){
-            console.log(err);
-        } else {
-            res.redirect("/");
-        }
-    })
-})
+
 
 app.post("/compose_email", async (req, res) => {
     res.render("compose.ejs");
@@ -161,13 +165,6 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
         res.status(500).send('An error occurred while sending the email');
     }
 });
-
-
-app.post("/login", 
-    passport.authenticate("local", {
-    successRedirect: "/main_page",
-    failureRedirect: "/login"
-}))
 
 
 app.post("/register", async(req, res) => {
@@ -207,6 +204,13 @@ app.post("/register", async(req, res) => {
 })
 
 
+app.post("/login", 
+    passport.authenticate("local", {
+    successRedirect: "/main_page",
+    failureRedirect: "/login"
+}))
+
+
 passport.use(
     "local",
     new Strategy(async function verify(username, password, cb){
@@ -242,7 +246,8 @@ passport.use(
 }))
 
 
-passport.use("google", 
+passport.use(
+    "google", 
     new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -287,6 +292,8 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
 
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
 //Process Customer Contact File
 async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status)
 {
