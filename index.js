@@ -6,6 +6,10 @@ import multer from "multer"; // Import multer
 import xlsx from "xlsx";
 import dotenv from 'dotenv';
 import bcrypt, { hash } from 'bcrypt'
+import session from "express-session"
+import passport from "passport"
+import { Strategy } from "passport-local";
+import GoogleStrategy from "passport-google-oauth2"
 
 
 dotenv.config();
@@ -44,21 +48,93 @@ const port = 3000;
 app.use(bodyParser.urlencoded({ extended: true })); // for handling form data
 app.use(bodyParser.json()); // for handling JSON data
 app.use(express.static("public"));
-
-
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24,    //1 day length cookie
+    }
+}))
+app.use(passport.initialize());
+app.use(passport.session());
 
 //Endpoints
 app.get("/", async (req, res) => {
     res.render("homepage.ejs");
 });
 
+
+app.get("/main_page", async (req, res) => {
+    if(req.isAuthenticated()){
+        res.render("main.ejs");
+    } else {
+        res.redirect("/");
+    }
+
+}); 
     
 app.get("/history", async (req, res) => {
-    const emails = await queryAllEmail();
-    res.render("history.ejs", {
-        emails: emails
-    });
+    if(req.isAuthenticated()) {
+        const emails = await queryAllEmail();
+        res.render("history.ejs", {
+            emails: emails
+        });
+    } else {
+        res.redirect("/");
+    }
+
 });
+
+
+app.get("/register", async(req, res) => {
+    res.render("register.ejs");
+})
+
+app.get("/view/:id", async(req, res) => {
+    if(req.isAuthenticated()) {
+        const reqID = req.params.id;
+        const emails = await queryEmailWithId(reqID);
+        console.log(emails);
+
+
+        res.render("modify.ejs", {
+            emails: emails
+        })
+    } else {
+        res.redirect("/");
+    }
+})
+
+
+app.get("/login", async(req, res) => {
+    res.render("login.ejs");
+})
+
+
+app.get("/auth/google/secrets", 
+    passport.authenticate("google", {
+    successRedirect: "/main_page",
+    failureRedirect: "/"
+}))
+
+
+app.get(
+    "/auth/google", 
+    passport.authenticate("google", {
+    scope: ["profile", "email"],
+}))
+
+
+app.get("/logout", (req, res) => {
+    req.logout((err) => {
+        if(err){
+            console.log(err);
+        } else {
+            res.redirect("/");
+        }
+    })
+})
 
 app.post("/compose_email", async (req, res) => {
     res.render("compose.ejs");
@@ -87,62 +163,12 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
 });
 
 
-app.get("/view/:id", async(req, res) => {
-    const reqID = req.params.id;
-    const emails = await queryEmailWithId(reqID);
-    console.log(emails);
+app.post("/login", 
+    passport.authenticate("local", {
+    successRedirect: "/main_page",
+    failureRedirect: "/login"
+}))
 
-
-    res.render("modify.ejs", {
-        emails: emails
-    })
-})
-
-
-app.get("/login", async(req, res) => {
-    res.render("login.ejs");
-})
-
-
-app.post("/login", async(req, res) =>{
-    const loginEmail = req.body.loginEmail;
-    const loginPassword = req.body.loginPassword;
-
-    try {
-        const result = await db.query(
-            "SELECT * FROM users WHERE email = $1", [loginEmail]
-        )
-        
-        if(result.rows.length > 0)
-        {
-            const user = result.rows[0];
-            const storedPassword = user.password;
-
-            //Verify password
-            bcrypt.compare(loginPassword, storedPassword, (err, result) => {
-                if(err){
-                    console.error("Error comparing passwords:", err);
-                } else {
-                    if(result){
-                        res.render("main.ejs");
-                    } else {
-                        res.send("Incorrect Password");
-                    }
-                }
-            })
-        } else {
-            res.send("User not found");
-        }
-    } catch (err) {
-        console.log(err);
-    }
-
-})
-
-
-app.get("/register", async(req, res) => {
-    res.render("register.ejs");
-})
 
 app.post("/register", async(req, res) => {
     const loginEmail = req.body.loginEmail;
@@ -162,11 +188,16 @@ app.post("/register", async(req, res) => {
                 {
                     console.error("Error in hashing password");
                 }else{
-                    await db.query(
-                        "INSERT INTO users (email, password) VALUES ($1, $2)",
+                    const result = await db.query(
+                        "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
                         [loginEmail, hash]
                     );
-                    res.redirect("/login");
+
+                    const user = result.rows[0];
+                    req.login(user, (err) => {
+                        console.log(err);
+                        res.redirect("/main_page");
+                    });
                 }
             })
         }
@@ -174,6 +205,87 @@ app.post("/register", async(req, res) => {
         console.log(err);
     }
 })
+
+
+passport.use(
+    "local",
+    new Strategy(async function verify(username, password, cb){
+    try {
+        const result = await db.query(
+            "SELECT * FROM users WHERE email = $1", [username]
+        )
+        
+        if(result.rows.length > 0)
+        {
+            const user = result.rows[0];
+            const storedPassword = user.password;
+
+            //Verify password
+            bcrypt.compare(password, storedPassword, (err, result) => {
+                if(err){
+                    return cb(err);
+                } else {
+                    if(result){
+                        return cb(null, user);
+                        // res.render("main.ejs");
+                    } else {
+                        return cb(null, false);
+                    }
+                }
+            });
+        } else {
+            return cb("User not found")
+        }
+    } catch (err) {
+        return cb(err);
+    }
+}))
+
+
+passport.use("google", 
+    new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "http://localhost:3000/auth/google/secrets",
+        userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+        }, async(accessToken, refreshToken, profile, cb) => {
+            console.log(profile);
+            try{
+                const result = await db.query(
+                    "SELECT * FROM users WHERE email = $1", [profile.email]
+                )
+
+                if(result.rows.length === 0){
+                    const newUser = await db.query(
+                        "INSERT INTO users (email, password) VALUES ($1, $2)", [
+                            profile.email,
+                            "google"
+                        ]
+                    );
+                    return cb(null, newUser.rows[0]);
+                }else{
+                    //Already exist
+                    return cb(null, result.rows[0])
+                }
+            }catch{
+                return cb(err);
+            }
+        })
+)
+
+passport.serializeUser((user, cb) => {
+    cb(null, user);
+})
+
+
+passport.deserializeUser((user, cb) => {
+    cb(null, user);
+})
+
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});
 
 //Process Customer Contact File
 async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status)
@@ -272,12 +384,7 @@ async function process_email(emailID, recipientName, recipientEmail, subject, ht
         console.error("Error in process_email function:", err);
         throw err;
     }
-}
-
-app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-});
-  
+}  
 
 
 async function insertEmailTable()
