@@ -87,6 +87,16 @@ app.get("/history", async (req, res) => {
 });
 
 
+app.get("/delete/:id", async(req, res) => {
+    if(req.isAuthenticated()){
+        await deleteEmailFromDatabase(req.params.id);
+        res.redirect("/history");
+    } else {
+        res.redirect("/")
+    }
+})
+
+
 app.get("/view/:id", async(req, res) => {
     if(req.isAuthenticated()) {
         const reqID = req.params.id;
@@ -158,7 +168,7 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
 
         await process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status);
 
-        res.redirect("/");
+        res.redirect("/main_page");
 
     } catch (err) {
         console.error("Error in /send_email endpoint:", err);
@@ -338,6 +348,8 @@ async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, i
                 console.log("Email was saved");
                 await insertRecordTable(recipientEmail, emailID);
 
+                //If the email already exist then just update it, if not then create a new one
+
             }
         }
 
@@ -505,3 +517,43 @@ async function queryEmailWithId(id){
         console.log("Error in queryEmailWithId method");
     }
 }
+
+
+async function deleteEmailFromDatabase(id){
+    await deleteFromRecordTable(id);
+    await deleteFromEmailContentTable(id);
+    await deleteFromEmailTable(id);
+}
+
+
+async function deleteFromEmailTable(id){
+    try {
+        await db.query(
+            "DELETE FROM email WHERE id = $1", [id]
+        )
+    } catch (err) {
+        console.log("Error in deleting from Email table");
+    }
+}
+
+
+async function deleteFromRecordTable(id){
+    try {
+        await db.query(
+            "DELETE FROM record WHERE email_id = $1", [id]
+        )
+    } catch (err) {
+        console.log("Error in deleting from Record table");
+    }
+}
+
+async function deleteFromEmailContentTable(id){
+    try {
+        await db.query(
+            "DELETE FROM email_content WHERE id = $1", [id]
+        )
+    } catch (err) {
+        console.log("Error in deleting from Email_Content table");
+    }
+}
+
