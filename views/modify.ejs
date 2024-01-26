@@ -34,7 +34,8 @@
         <input type="hidden" id="modifiedHtmlContent" name="modifiedHtmlContent">
         <input type="hidden" id="imageDataArray" name="imageDataArray">
         <input type="hidden" id="pureHtml" name="pureHtml">
-
+        <input type="hidden" id="email_id" name="email_id" value="<%=emails.id  %>">
+        
         <% if(emails.status === 'saved') {%>
             <button type="submit" name="status" value="sent">Send Email</button>
             <button type="submit" name="status" value="saved">Save Email</button>

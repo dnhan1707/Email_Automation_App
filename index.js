@@ -101,7 +101,6 @@ app.get("/view/:id", async(req, res) => {
     if(req.isAuthenticated()) {
         const reqID = req.params.id;
         const emails = await queryEmailWithId(reqID);
-        console.log(emails);
 
 
         res.render("modify.ejs", {
@@ -151,11 +150,23 @@ app.get(
 
 
 app.post("/compose_email", async (req, res) => {
-    res.render("compose.ejs");
+    if(req.isAuthenticated())
+    {
+        const contacts = await queryAllCustomerContacts();
+
+        res.render("compose.ejs",{
+            contacts: contacts
+        });
+    } else {
+        res.redirect("/");
+    }
+
 });
 
 app.post("/send_email", upload.single("excelFile"), async (req, res) => {
     try {
+        const email_id = req.body.email_id //From modify.ejs
+        const isNewEmail = req.body.isNewEmail === "true"; // Convert string to boolean
         const pureHtml = req.body.pureHtml;
         const uploadedFile = req.file.buffer;
         const subject = req.body.subject;
@@ -163,10 +174,13 @@ app.post("/send_email", upload.single("excelFile"), async (req, res) => {
         const imageDataArray = JSON.parse(req.body.imageDataArray);
         const status = req.body.status;
 
+        
+        if(isNewEmail){
+            await insertEmailTable();
+        }
         //Insert email
-        await insertEmailTable();
 
-        await process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status);
+        await process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, email_id);
 
         res.redirect("/main_page");
 
@@ -264,7 +278,6 @@ passport.use(
         callbackURL: "http://localhost:3000/auth/google/secrets",
         userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
         }, async(accessToken, refreshToken, profile, cb) => {
-            console.log(profile);
             try{
                 const result = await db.query(
                     "SELECT * FROM users WHERE email = $1", [profile.email]
@@ -305,7 +318,7 @@ app.listen(port, () => {
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 //Process Customer Contact File
-async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status)
+async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, modify_email)
 {
 
     try {
@@ -329,9 +342,13 @@ async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, i
         // //Insert email_content
         // await insertEmailContentTable(emailID, subject, htmlPart, base64content);
 
+        if(isNewEmail){
+            //Insert email_content
+            await insertEmailContentTable(emailID, status, subject, pureHtml);
+        } else {
+            await updateEmailContentTable(modify_email, status, subject, pureHtml);
+        }
 
-        //Insert email_content
-        await insertEmailContentTable(emailID, status, subject, pureHtml);
 
         for (const row of workbook_response) {
             const name = row['Full Name'];
@@ -345,10 +362,13 @@ async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, i
             }
             else
             {
-                console.log("Email was saved");
-                await insertRecordTable(recipientEmail, emailID);
-
-                //If the email already exist then just update it, if not then create a new one
+                if(isNewEmail)
+                {
+                    await insertRecordTable(recipientEmail, emailID);
+                }
+                else{
+                    await updateRecordTable(recipientEmail, modify_email);
+                }
 
             }
         }
@@ -426,8 +446,6 @@ async function insertEmailContentTable(emailID, status, subject, body)
     try {
         //Need to query ID
         const timestamp = new Date();
-        console.log("Values before query:", emailID, status, subject, body, timestamp);
-
         await db.query(
             "INSERT INTO email_content (id, status, subject, body, sent_at)  VALUES ($1, $2, $3, $4, $5)",
             [emailID, status, subject, body, timestamp]
@@ -492,6 +510,19 @@ async function insertRecordTable(recipientEmail, emailId)
 };
 
 
+
+async function queryAllCustomerContacts(){
+    try{
+        const result = await db.query(
+            "SELECT * FROM customer_contact"
+        )
+
+        return result.rows;
+    } catch (err) {
+        console.log("Error while query customer contacts");
+    }
+}
+
 async function queryAllEmail()
 {
     try{
@@ -511,7 +542,7 @@ async function queryEmailWithId(id){
         const result = await db.query(
             "SELECT * FROM email_content WHERE id = ($1)", [id]
         )
-
+        console.log("Queried email id: ", id)
         return result.rows[0];
     }catch (err) {
         console.log("Error in queryEmailWithId method");
@@ -531,6 +562,8 @@ async function deleteFromEmailTable(id){
         await db.query(
             "DELETE FROM email WHERE id = $1", [id]
         )
+
+        console.log("Deleted: " + id + " From email table");
     } catch (err) {
         console.log("Error in deleting from Email table");
     }
@@ -542,6 +575,8 @@ async function deleteFromRecordTable(id){
         await db.query(
             "DELETE FROM record WHERE email_id = $1", [id]
         )
+
+        console.log("Deleted: " + id + " From record table");
     } catch (err) {
         console.log("Error in deleting from Record table");
     }
@@ -552,8 +587,46 @@ async function deleteFromEmailContentTable(id){
         await db.query(
             "DELETE FROM email_content WHERE id = $1", [id]
         )
+
+        console.log("Deleted: " + id + " From email content table");
+
     } catch (err) {
         console.log("Error in deleting from Email_Content table");
+    }
+}
+
+
+async function updateEmailContentTable(emailID, status, subject, pureHtml){
+    try {
+        await db.query(
+            "UPDATE email_content SET status = ($1), subject = ($2), body = ($3) WHERE id = ($4)", [status, subject, pureHtml, emailID]
+        )
+
+        console.log("Updated: " + emailID + " in email content table");
+
+    } catch (err){
+        console.log(err);
+    }
+}
+
+
+async function updateRecordTable(recipientEmail, emailID){
+    try {
+        const customerIdResult = await db.query(
+            "SELECT id FROM customer_contact WHERE LOWER(email_address) = LOWER($1)",
+            [recipientEmail]
+        )
+        const customerId = customerIdResult.rows[0].id;
+
+        await db.query(
+            "UPDATE record SET email_id = $1 WHERE customer_id = $2", 
+            [emailID, customerId]
+        );
+
+        console.log("Updated: " + emailID + " in record table");
+
+    } catch (err) {
+        console.log(err);
     }
 }
 
