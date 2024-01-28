@@ -59,6 +59,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+
 //Endpoints
 app.get("/", async (req, res) => {
     res.render("homepage.ejs");
@@ -147,42 +148,70 @@ app.get(
 }))
 
 
+app.get("/upload_contact", async (req, res) => {
+    if(req.isAuthenticated()){
+        res.render("upload_contact.ejs")
+    } else {
+        res.redirect("/")
+    }
+})
+
+
+app.post("/upload_contact", upload.single("excelFile"), async (req, res) => {
+    if(req.isAuthenticated()){
+        const uploadedFile = req.file.buffer;
+        await upload_contact(uploadedFile);
+        res.redirect("/main_page");
+    } else {
+        res.redirect("/")
+    }
+})
 
 
 app.post("/compose_email", async (req, res) => {
-    if(req.isAuthenticated())
-    {
+
+    try {
         const contacts = await queryAllCustomerContacts();
 
         res.render("compose.ejs",{
             contacts: contacts
         });
-    } else {
-        res.redirect("/");
+    } catch (err) {
+        console.log("Error at post route /compose_email");
+        console.log(err);
     }
 
 });
 
-app.post("/send_email", upload.single("excelFile"), async (req, res) => {
+app.post("/send_email", async (req, res) => {
     try {
-        const email_id = req.body.email_id //From modify.ejs
-        const isNewEmail = req.body.isNewEmail === "true"; // Convert string to boolean
-        const pureHtml = req.body.pureHtml;
-        const uploadedFile = req.file.buffer;
-        const subject = req.body.subject;
-        const htmlPart = req.body.modifiedHtmlContent;
-        const imageDataArray = JSON.parse(req.body.imageDataArray);
-        const status = req.body.status;
+        const contacts = await queryAllCustomerContacts();
+        if(contacts.length > 0){
+            const selected_contacts = JSON.parse(req.body.selectedContacts) 
+            console.log(typeof(selected_contacts));
+            const email_id = req.body.email_id //From modify.ejs
+            const isNewEmail = req.body.isNewEmail === "true"; // Convert string to boolean
+            const pureHtml = req.body.pureHtml;
+            // const uploadedFile = req.file.buffer;
+            const subject = req.body.subject;
+            const htmlPart = req.body.modifiedHtmlContent;
+            const imageDataArray = JSON.parse(req.body.imageDataArray);
+            const status = req.body.status;
 
-        
-        if(isNewEmail){
-            await insertEmailTable();
+            
+            if(isNewEmail){
+                await insertEmailTable();
+            }
+            //Insert email
+
+            await process_contact_file(subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, email_id, selected_contacts);
+
+            res.redirect("/main_page");
+        } else {
+            res.status(500).send('There is no customers data');
         }
-        //Insert email
 
-        await process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, email_id);
 
-        res.redirect("/main_page");
 
     } catch (err) {
         console.error("Error in /send_email endpoint:", err);
@@ -318,7 +347,7 @@ app.listen(port, () => {
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 //Process Customer Contact File
-async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, modify_email)
+async function process_contact_file(subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id)
 {
 
     try {
@@ -327,11 +356,11 @@ async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, i
         // {
         //     base64content = imageDataArray[0].Base64Content;
         // }
-        const workbook = xlsx.read(uploadedFile);
-        const workbook_sheet = workbook.SheetNames;
-        const workbook_response = xlsx.utils.sheet_to_json(
-            workbook.Sheets[workbook_sheet[0]]
-        );
+        // const workbook = xlsx.read(uploadedFile);
+        // const workbook_sheet = workbook.SheetNames;
+        // const workbook_response = xlsx.utils.sheet_to_json(
+        //     workbook.Sheets[workbook_sheet[0]]
+        // );
 
         // //Insert email
         // await insertEmailTable(status);
@@ -349,29 +378,30 @@ async function process_contact_file(uploadedFile, subject, pureHtml, htmlPart, i
             await updateEmailContentTable(modify_email, status, subject, pureHtml);
         }
 
+        await send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id);
 
-        for (const row of workbook_response) {
-            const name = row['Full Name'];
-            const recipientEmail = row['Email'];
+        // for (const row of workbook_response) {
+        //     const name = row['Full Name'];
+        //     const recipientEmail = row['Email'];
 
-            //Insert customers' contacts
-            await insertCustomerContact(name, recipientEmail);
-            if(status === 'sent')
-            {
-                await process_email(emailID, name, recipientEmail, subject, htmlPart, imageDataArray);
-            }
-            else
-            {
-                if(isNewEmail)
-                {
-                    await insertRecordTable(recipientEmail, emailID);
-                }
-                else{
-                    await updateRecordTable(recipientEmail, modify_email);
-                }
+        //     //Insert customers' contacts
+        //     await insertCustomerContact(name, recipientEmail);
+        //     if(status === 'sent')
+        //     {
+        //         await process_email(emailID, name, recipientEmail, subject, htmlPart, imageDataArray);
+        //     }
+        //     else
+        //     {
+        //         if(isNewEmail)
+        //         {
+        //             await insertRecordTable(recipientEmail, emailID);
+        //         }
+        //         else{
+        //             await updateRecordTable(recipientEmail, modify_email);
+        //         }
 
-            }
-        }
+        //     }
+        // }
 
     } catch (err) {
         console.error("Error processing the uploaded file:", err);
@@ -523,6 +553,21 @@ async function queryAllCustomerContacts(){
     }
 }
 
+
+async function queryAllCustomerContactsById(selected_contacts_id){
+    try{
+        
+        const formatted_contacts_id = selected_contacts_id.map(id => parseInt(id)).join(","); // Format array without extra quotes
+        const result = await db.query(
+            "SELECT * FROM customer_contact WHERE id IN (" + formatted_contacts_id + ")"
+        );
+        return result.rows;
+    } catch (err) {
+        console.log("Error while query customer contacts by Id");
+        console.log(err);
+    }
+}
+
 async function queryAllEmail()
 {
     try{
@@ -630,3 +675,62 @@ async function updateRecordTable(recipientEmail, emailID){
     }
 }
 
+
+async function send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id){
+    try {
+        const contacts = await queryAllCustomerContactsById(selected_contacts_id);
+        for (const contact of contacts){
+            const customer_name = contact.name;
+            const customer_email = contact.email_address;
+
+            if(status === 'sent')
+            {
+                await process_email(emailID, customer_name, customer_email, subject, htmlPart, imageDataArray);
+            }
+            else
+            {
+                if(isNewEmail)
+                {
+                    await insertRecordTable(customer_email, emailID);
+                }
+                else{
+                    await updateRecordTable(customer_email, modify_email);
+                }
+
+            }
+        };
+
+    } catch (error) {
+        console.log("Error in send_email function")
+    }
+
+}
+
+
+async function upload_contact(uploadedFile){
+    try{
+        
+        const workbook = xlsx.read(uploadedFile);
+        const workbook_sheet = workbook.SheetNames;
+        const workbook_response = xlsx.utils.sheet_to_json(
+            workbook.Sheets[workbook_sheet[0]]
+        );
+
+
+        for (const row of workbook_response) {
+            const name = row['Full Name'];
+            const recipientEmail = row['Email'];
+
+            //Insert customers' contacts
+            await insertCustomerContact(name, recipientEmail);
+        }
+    } catch (err){
+        console.log(err);
+    }
+}
+
+
+
+async function toNumber(value) {
+    return Number(value);
+ }

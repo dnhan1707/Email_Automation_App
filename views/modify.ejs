@@ -15,7 +15,7 @@
     <title>Modify Page</title>
 </head>
 <body>
-    <form id="emailForm" action="/send_email" method="post" enctype="multipart/form-data">
+    <form id="emailForm" action="/send_email" method="post">
         <div>
             <label for="subject">Subject:</label>
             <input type="text" id="subject" name="subject" value="<%=emails.subject  %>">
@@ -26,10 +26,10 @@
             <div id="editor" style="height: 200px;"></div>
         </div>
 
-        <div>
+        <!-- <div>
             <label for="excelFile">Upload Customer Contacts:</label>
             <input type="file" id="excelFile" name="excelFile">
-        </div>
+        </div> -->
 
         <input type="hidden" id="modifiedHtmlContent" name="modifiedHtmlContent">
         <input type="hidden" id="imageDataArray" name="imageDataArray">

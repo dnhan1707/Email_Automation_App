@@ -18,22 +18,22 @@
 
     <div class="container">
 
-        <div class="customer-list">
-            <h3>Select Contacts:</h3>
-            <% contacts.forEach(function(contact){ %>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault" name="chk">
-                    <label class="form-check-label" for="flexCheckDefault">
-                    <%=contact.name %>
-                    </label>
-                </div>
-            <% }) %>
-            <input type="button" onclick='selects()' value="Select All"/>  
-            <input type="button" onclick='deSelect()' value="Deselect All"/>  
+        <form id="emailForm" action="/send_email" method="post">
+            <div class="customer-list">
+                <h3>Select Contacts:</h3>
+                <% contacts.forEach(function(contact){ %>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="<%=contact.id %>" id="contact_<%=contact.id  %>" name="chk">
+                        <label class="form-check-label" for="contact_<%=contact.id  %>">
+                        <%=contact.name %>
+                        </label>
+                    </div>
+                <% }) %>
+                <input type="button" onclick='selects()' value="Select All"/>  
+                <input type="button" onclick='deSelect()' value="Deselect All"/>  
+    
+            </div>
 
-        </div>
-
-        <form id="emailForm" action="/send_email" method="post" enctype="multipart/form-data">
             <div>
                 <label for="subject">Subject:</label>
                 <input type="text" id="subject" name="subject" required>
@@ -44,15 +44,16 @@
                 <div id="editor" style="height: 200px;"></div>
             </div>
 
-            <div>
+            <!-- <div>
                 <label for="excelFile">Upload Customer Contacts:</label>
                 <input type="file" id="excelFile" name="excelFile">
-            </div>
+            </div> -->
 
             <input type="hidden" id="modifiedHtmlContent" name="modifiedHtmlContent">
             <input type="hidden" id="imageDataArray" name="imageDataArray">
             <input type="hidden" id="pureHtml" name="pureHtml">
             <input type="hidden" name="isNewEmail" value="true">
+            <input type="hidden" name="selectedContacts" id="selectedContacts">
 
 
             <button type="submit" name="status" value="sent">Send Email</button>
@@ -95,6 +96,9 @@
     
         
     document.getElementById('emailForm').addEventListener('submit', function () {
+        const selectedContacts = Array.from(document.querySelectorAll('input[name="chk"]:checked')).map(checkbox => parseInt(checkbox.value));
+        document.getElementById('selectedContacts').value = JSON.stringify(selectedContacts);
+
         let justHtml = quill.root.innerHTML;
         document.getElementById('pureHtml').value = justHtml;
 
