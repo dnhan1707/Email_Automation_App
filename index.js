@@ -101,11 +101,14 @@ app.get("/delete/:id", async(req, res) => {
 app.get("/view/:id", async(req, res) => {
     if(req.isAuthenticated()) {
         const reqID = req.params.id;
+        const contacts = await queryAllCustomerContacts();
         const emails = await queryEmailWithId(reqID);
-
+        const customerId = await queryCustomerIdByEmailIdFromRecord(reqID);
 
         res.render("modify.ejs", {
-            emails: emails
+            emails: emails,
+            chosenId: customerId,
+            contacts: contacts
         })
     } else {
         res.redirect("/");
@@ -731,6 +734,14 @@ async function upload_contact(uploadedFile){
 
 
 
-async function toNumber(value) {
-    return Number(value);
- }
+async function queryCustomerIdByEmailIdFromRecord(reqID){
+    try {
+        const result = await db.query(
+            "SELECT customer_id FROM record WHERE email_id = $1", [reqID]
+        )
+        return result.rows;
+    } catch (error) {
+        console.log("Error in queryCustomerIdByEmailIdFromRecord");
+        console.log(error);
+    }
+}
