@@ -15,13 +15,15 @@
     <title>Modify Page</title>
 </head>
 <body>
+    <div class="container">
+
     <form id="emailForm" action="/send_email" method="post">
         <div class="customer-list">
             <h3>Select Contacts:</h3>
             <% contacts.forEach(function(contact){ %>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="<%=contact.id %>" id="contact_<%=contact.id  %>" name="chk">
-                    <label class="form-check-label" for="contact_<%=contact.id  %>">
+                    <input class="form-check-input" type="checkbox" value="<%=contact.id %>" id="<%=contact.id  %>" name="chk">
+                    <label class="form-check-label" for="<%=contact.id  %>">
                     <%=contact.name %>
                     </label>
                 </div>
@@ -50,7 +52,10 @@
         <input type="hidden" id="imageDataArray" name="imageDataArray">
         <input type="hidden" id="pureHtml" name="pureHtml">
         <input type="hidden" id="email_id" name="email_id" value="<%=emails.id  %>">
-        
+        <input type="hidden" id="chosenId" name="chosenId" value="<%=chosenId %>">
+        <input type="hidden" id="newSelectedContacts" name="newSelectedContacts">
+
+
         <% if(emails.status === 'saved') {%>
             <button type="submit" name="status" value="sent">Send Email</button>
             <button type="submit" name="status" value="saved">Save Email</button>
@@ -59,6 +64,7 @@
 
 
     </form>
+    </div>
 
     
     <script>
@@ -92,12 +98,25 @@
             },
         });
 
+        
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            choose(); // Call choose() function when DOM content is loaded
+        });
+
+
         // Set the initial HTML content
         quill.clipboard.dangerouslyPasteHTML(initialHtmlContent);
+        // const chosenId = JSON.parse(document.getElementById('chosenId').value);
+
+        // chosenId.forEach(function(id){
+        //     document.getElementById(id.customer_id.toString()).checked = true;
+        // });
 
         document.getElementById('emailForm').addEventListener('submit', function () {
-            const selectedContacts = Array.from(document.querySelectorAll('input[name="chk"]:checked')).map(checkbox => parseInt(checkbox.value));
-            document.getElementById('selectedContacts').value = JSON.stringify(selectedContacts);
+
+            const newSelectedContacts = Array.from(document.querySelectorAll('input[name="chk"]:checked')).map(checkbox => parseInt(checkbox.value));
+            document.getElementById('newSelectedContacts').value = JSON.stringify(newSelectedContacts);
 
             let justHtml = quill.root.innerHTML;
             document.getElementById('pureHtml').value = justHtml;
@@ -118,6 +137,21 @@
             }
     });
     
+    function choose() {
+        var ele = document.getElementsByName('chk');
+        var chosenId = document.getElementById('chosenId').value; // Parse chosenId as JSON
+
+        for (var i = 0; i < ele.length; i++) {
+            if (ele[i].type == 'checkbox') {
+                // Check if the checkbox value exists in any customer_id in the chosenId array
+                // if (chosenId.some(obj => obj.customer_id === parseInt(ele[i].value))) {
+                    ele[i].checked = true; // If yes, check the checkbox
+                
+            }
+        }
+    }
+
+
     function selects(){  
         var ele=document.getElementsByName('chk');  
         for(var i=0; i<ele.length; i++){  

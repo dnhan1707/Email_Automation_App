@@ -103,11 +103,11 @@ app.get("/view/:id", async(req, res) => {
         const reqID = req.params.id;
         const contacts = await queryAllCustomerContacts();
         const emails = await queryEmailWithId(reqID);
-        const customerId = await queryCustomerIdByEmailIdFromRecord(reqID);
-
+        const chosenId = await queryCustomerIdByEmailIdFromRecord(reqID);
+        console.log(chosenId);
         res.render("modify.ejs", {
             emails: emails,
-            chosenId: customerId,
+            chosenId: chosenId,
             contacts: contacts
         })
     } else {
@@ -190,8 +190,7 @@ app.post("/send_email", async (req, res) => {
     try {
         const contacts = await queryAllCustomerContacts();
         if(contacts.length > 0){
-            const selected_contacts = JSON.parse(req.body.selectedContacts) 
-            console.log(typeof(selected_contacts));
+            const selected_contacts = JSON.parse(req.body.newSelectedContacts) 
             const email_id = req.body.email_id //From modify.ejs
             const isNewEmail = req.body.isNewEmail === "true"; // Convert string to boolean
             const pureHtml = req.body.pureHtml;
@@ -204,6 +203,7 @@ app.post("/send_email", async (req, res) => {
             
             if(isNewEmail){
                 await insertEmailTable();
+               selected_contacts = JSON.parse(req.body.selectedContacts) 
             }
             //Insert email
 
@@ -354,25 +354,9 @@ async function process_contact_file(subject, pureHtml, htmlPart, imageDataArray,
 {
 
     try {
-        // let base64content = "";
-        // if(imageDataArray.length > 0)
-        // {
-        //     base64content = imageDataArray[0].Base64Content;
-        // }
-        // const workbook = xlsx.read(uploadedFile);
-        // const workbook_sheet = workbook.SheetNames;
-        // const workbook_response = xlsx.utils.sheet_to_json(
-        //     workbook.Sheets[workbook_sheet[0]]
-        // );
-
-        // //Insert email
-        // await insertEmailTable(status);
 
         //Get current email id
         const emailID = await getCurrentEmailId();
-
-        // //Insert email_content
-        // await insertEmailContentTable(emailID, subject, htmlPart, base64content);
 
         if(isNewEmail){
             //Insert email_content
@@ -383,28 +367,6 @@ async function process_contact_file(subject, pureHtml, htmlPart, imageDataArray,
 
         await send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id);
 
-        // for (const row of workbook_response) {
-        //     const name = row['Full Name'];
-        //     const recipientEmail = row['Email'];
-
-        //     //Insert customers' contacts
-        //     await insertCustomerContact(name, recipientEmail);
-        //     if(status === 'sent')
-        //     {
-        //         await process_email(emailID, name, recipientEmail, subject, htmlPart, imageDataArray);
-        //     }
-        //     else
-        //     {
-        //         if(isNewEmail)
-        //         {
-        //             await insertRecordTable(recipientEmail, emailID);
-        //         }
-        //         else{
-        //             await updateRecordTable(recipientEmail, modify_email);
-        //         }
-
-        //     }
-        // }
 
     } catch (err) {
         console.error("Error processing the uploaded file:", err);
