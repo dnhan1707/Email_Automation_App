@@ -53,7 +53,7 @@
         <input type="hidden" id="pureHtml" name="pureHtml">
         <input type="hidden" id="email_id" name="email_id" value="<%=emails.id  %>">
         <input type="hidden" id="chosenId" name="chosenId" value="<%=chosenId %>">
-        <input type="hidden" id="newSelectedContacts" name="newSelectedContacts">
+        <input type="hidden" id="selectedContacts" name="selectedContacts">
 
 
         <% if(emails.status === 'saved') {%>
@@ -115,8 +115,8 @@
 
         document.getElementById('emailForm').addEventListener('submit', function () {
 
-            const newSelectedContacts = Array.from(document.querySelectorAll('input[name="chk"]:checked')).map(checkbox => parseInt(checkbox.value));
-            document.getElementById('newSelectedContacts').value = JSON.stringify(newSelectedContacts);
+            const selectedContacts = Array.from(document.querySelectorAll('input[name="chk"]:checked')).map(checkbox => parseInt(checkbox.value));
+            document.getElementById('selectedContacts').value = JSON.stringify(selectedContacts);
 
             let justHtml = quill.root.innerHTML;
             document.getElementById('pureHtml').value = justHtml;
@@ -139,18 +139,31 @@
     
     function choose() {
         var ele = document.getElementsByName('chk');
-        var chosenId = document.getElementById('chosenId').value; // Parse chosenId as JSON
+        var chosenIdJSON = document.getElementById('chosenId').value; // Get chosenId as JSON string
+        var chosenId; // Declare variable to store parsed JSON
 
-        for (var i = 0; i < ele.length; i++) {
-            if (ele[i].type == 'checkbox') {
-                // Check if the checkbox value exists in any customer_id in the chosenId array
-                // if (chosenId.some(obj => obj.customer_id === parseInt(ele[i].value))) {
-                    ele[i].checked = true; // If yes, check the checkbox
-                
+        try {
+            chosenId = JSON.parse(chosenIdJSON); // Parse JSON string to JavaScript object
+        } catch (error) {
+            console.error('Error parsing chosenId JSON:', error);
+            return; // Exit function if parsing fails
+        }
+
+        // Check if chosenId is an array
+        if (Array.isArray(chosenId)) {
+            for (var i = 0; i < ele.length; i++) {
+                if (ele[i].type === 'checkbox') {
+                    // Check if the checkbox value exists in any customer_id in the chosenId array
+                    var checkboxValue = parseInt(ele[i].value);
+                    if (chosenId.some(obj => obj.customer_id === checkboxValue)) {
+                        ele[i].checked = true; // If yes, check the checkbox
+                    }
+                }
             }
+        } else {
+            console.error('chosenId is not an array');
         }
     }
-
 
     function selects(){  
         var ele=document.getElementsByName('chk');  

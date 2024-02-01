@@ -104,12 +104,13 @@ app.get("/view/:id", async(req, res) => {
         const contacts = await queryAllCustomerContacts();
         const emails = await queryEmailWithId(reqID);
         const chosenId = await queryCustomerIdByEmailIdFromRecord(reqID);
-        console.log(chosenId);
+        const chosenIdJSON = JSON.stringify(chosenId);
+        console.log(chosenIdJSON);
         res.render("modify.ejs", {
             emails: emails,
-            chosenId: chosenId,
+            chosenId: chosenIdJSON, // Pass the JSON string to the template
             contacts: contacts
-        })
+        });
     } else {
         res.redirect("/");
     }
@@ -190,7 +191,8 @@ app.post("/send_email", async (req, res) => {
     try {
         const contacts = await queryAllCustomerContacts();
         if(contacts.length > 0){
-            const selected_contacts = JSON.parse(req.body.newSelectedContacts) 
+            const selected_contacts = JSON.parse(req.body.selectedContacts) 
+            console.log(selected_contacts);
             const email_id = req.body.email_id //From modify.ejs
             const isNewEmail = req.body.isNewEmail === "true"; // Convert string to boolean
             const pureHtml = req.body.pureHtml;
@@ -203,7 +205,7 @@ app.post("/send_email", async (req, res) => {
             
             if(isNewEmail){
                 await insertEmailTable();
-               selected_contacts = JSON.parse(req.body.selectedContacts) 
+            //    selected_contacts = JSON.parse(req.body.selectedContacts) 
             }
             //Insert email
 
@@ -491,7 +493,6 @@ async function insertRecordTable(recipientEmail, emailId)
             [recipientEmail]
         )
         const customerId = customerIdResult.rows[0].id;
-
         // Insert into the history table
         await db.query(
             "INSERT INTO record (email_id, customer_id) VALUES ($1, $2)",
@@ -627,9 +628,17 @@ async function updateRecordTable(recipientEmail, emailID){
             [recipientEmail]
         )
         const customerId = customerIdResult.rows[0].id;
+        console.log("Here: ", customerId)
 
+            // First, delete records with the same email_id but different customer_id
         await db.query(
-            "UPDATE record SET email_id = $1 WHERE customer_id = $2", 
+            "DELETE FROM record WHERE email_id = $1 AND customer_id != $2",
+            [emailID, customerId]
+        );
+
+        // Now update the record with the new email_id and customer_id
+        await db.query(
+            "UPDATE record SET email_id = $1 WHERE customer_id = $2",
             [emailID, customerId]
         );
 
