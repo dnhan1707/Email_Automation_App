@@ -606,6 +606,19 @@ async function deleteFromEmailContentTable(id){
     }
 }
 
+async function deleteFromRecordTableByEmailIdAndCustomerId(modify_email, idToDelete)
+{
+    try {
+        await db.query(
+            "DELETE FROM record WHERE email_id = $1 AND customer_id = $2", [modify_email, idToDelete]
+        )
+
+        console.log("Deleted email " + modify_email + " With customer: " + idToDelete + " From record table");
+    } catch (err) {
+        console.log("Error in deleting from Record table ", err);
+    }
+}
+
 
 async function updateEmailContentTable(emailID, status, subject, pureHtml){
     try {
@@ -621,28 +634,41 @@ async function updateEmailContentTable(emailID, status, subject, pureHtml){
 }
 
 
-async function updateRecordTable(recipientEmail, emailID){
+async function updateRecordTable(recipientEmail, emailID) {
     try {
+        const newIds = []
+        
         const customerIdResult = await db.query(
             "SELECT id FROM customer_contact WHERE LOWER(email_address) = LOWER($1)",
             [recipientEmail]
-        )
+        );
         const customerId = customerIdResult.rows[0].id;
-        console.log("Here: ", customerId)
+        
 
-            // First, delete records with the same email_id but different customer_id
-        await db.query(
-            "DELETE FROM record WHERE email_id = $1 AND customer_id != $2",
+        // Check if record already exists for this emailID and customerId
+        const existingRecord = await db.query(
+            "SELECT * FROM record WHERE email_id = $1 AND customer_id = $2",
             [emailID, customerId]
         );
 
-        // Now update the record with the new email_id and customer_id
-        await db.query(
-            "UPDATE record SET email_id = $1 WHERE customer_id = $2",
-            [emailID, customerId]
-        );
+        if (existingRecord.rows.length === 0) {
+            // Insert new record since it doesn't exist
+            await db.query(
+                "INSERT INTO record (email_id, customer_id) VALUES ($1, $2)",
+                [emailID, customerId]
+            );
+            newIds.push(customerId);
+            console.log("added: "+customerId+" to newIds");
 
+        } else {
+            newIds.push(customerId);
+            console.log("added: "+customerId+" to newIds");
+
+            // Record already exists, no need to do anything
+        }
         console.log("Updated: " + emailID + " in record table");
+
+        return newIds[0];
 
     } catch (err) {
         console.log(err);
@@ -650,8 +676,16 @@ async function updateRecordTable(recipientEmail, emailID){
 }
 
 
+
 async function send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id){
     try {
+        var newIds = [];
+        const existingCustomerIDsResult = await db.query(
+            "SELECT customer_id FROM record WHERE email_id = $1",
+            [modify_email]
+        );
+        const existingCustomerIDs = existingCustomerIDsResult.rows.map(row => row.customer_id);
+
         const contacts = await queryAllCustomerContactsById(selected_contacts_id);
         for (const contact of contacts){
             const customer_name = contact.name;
@@ -668,14 +702,32 @@ async function send_email(emailID, subject, htmlPart, imageDataArray, status, is
                     await insertRecordTable(customer_email, emailID);
                 }
                 else{
-                    await updateRecordTable(customer_email, modify_email);
+                    const newId = await updateRecordTable(customer_email, modify_email);
+                    newIds.push(newId);
                 }
 
             }
         };
+        
+        if (status != "sent")
+        {
+            console.log("newIds: ", newIds);
+            // Determine IDs to delete from record table
+            const idsToDelete = existingCustomerIDs.filter(id => !newIds.includes(id));
+            console.log("idsToDelete: ", idsToDelete);
+
+            // Delete records from record table
+            if (idsToDelete.length > 0) {
+                for (const idToDelete of idsToDelete) {
+                    await deleteFromRecordTableByEmailIdAndCustomerId(modify_email, idToDelete);
+                }
+            }
+        }
+
+
 
     } catch (error) {
-        console.log("Error in send_email function")
+        console.log("Error in send_email function ", error)
     }
 
 }
