@@ -5,6 +5,11 @@ body {
     background-color: #f7f7f7;
 }
 
+.scrollable-div {
+    width: 300px; /* Set your desired width */
+    height: 200px; /* Set your desired height */
+    overflow: auto; /* This will add a scroll bar if the content overflows the div */
+}
 
 .container {
     display: flex;
