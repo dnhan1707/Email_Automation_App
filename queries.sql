@@ -21,6 +21,7 @@ CREATE TABLE email_content(
     id int REFERENCES email(id),
     status VARCHAR(10),
     subject text,
+    template_id text,
     body text,
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

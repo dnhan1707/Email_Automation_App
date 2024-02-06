@@ -36,16 +36,26 @@
 
                 <div class="text-box">
                     <div>
+                        <label for="sender">Sender:</label>
+                        <input type="text" id="sender" name="sender" value="<%=emails.sender_email  %>">
+                    </div>
+
+                    <div>
                         <label for="subject">Subject:</label>
-                        <input type="text" id="subject" name="subject" value="<%=emails.subject  %>">
+                        <input type="text" id="subject" name="subject" value="<%=emails_content.subject  %>">
                     </div>
                     
+                    <div>
+                        <label for="template_id">Template ID:</label>
+                        <input type="text" id="template_id" name="template_id" value="<%=emails_content.template_id  %>">
+                    </div>
+
                     <div>
                         <label for="text_part">Text Part:</label>
                         <div id="editor" style="height: 200px;"></div>
                     </div>
 
-                    <% if(emails.status === 'saved') {%>
+                    <% if(emails_content.status === 'saved') {%>
                         <button type="submit" name="status" value="sent">Send Email</button>
                         <button type="submit" name="status" value="saved">Save Email</button>
                         <% } %>
@@ -57,7 +67,7 @@
             <input type="hidden" id="modifiedHtmlContent" name="modifiedHtmlContent">
             <input type="hidden" id="imageDataArray" name="imageDataArray">
             <input type="hidden" id="pureHtml" name="pureHtml">
-            <input type="hidden" id="email_id" name="email_id" value="<%=emails.id  %>">
+            <input type="hidden" id="email_id" name="email_id" value="<%=emails_content.id  %>">
             <input type="hidden" id="chosenId" name="chosenId" value="<%=chosenId %>">
             <input type="hidden" id="selectedContacts" name="selectedContacts">
 
@@ -89,7 +99,7 @@
 
             ['link', 'image']
             ];
-        var initialHtmlContent = `<%- JSON.stringify(emails.body) %>`;
+        var initialHtmlContent = `<%- JSON.stringify(emails_content.body) %>`;
 
         var quill = new Quill('#editor', {
             theme: 'snow',
