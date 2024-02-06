@@ -56,8 +56,8 @@
                     </div>
 
                     <% if(emails_content.status === 'saved') {%>
-                        <button type="submit" name="status" value="sent">Send Email</button>
-                        <button type="submit" name="status" value="saved">Save Email</button>
+                        <button style="background-color: rgb(62, 193, 62);" type="submit" name="status" value="sent">Send Email</button>
+                        <button style="background-color: rgb(238, 188, 23);" type="submit" name="status" value="saved">Save Email</button>
                         <% } %>
                 </div>
             </div>
@@ -99,7 +99,7 @@
 
             ['link', 'image']
             ];
-        var initialHtmlContent = `<%- JSON.stringify(emails_content.body) %>`;
+
 
         var quill = new Quill('#editor', {
             theme: 'snow',
@@ -114,14 +114,16 @@
             choose(); // Call choose() function when DOM content is loaded
         });
 
-
         // Set the initial HTML content
-        quill.clipboard.dangerouslyPasteHTML(initialHtmlContent);
-        // const chosenId = JSON.parse(document.getElementById('chosenId').value);
+        var initialHtmlContent = `<%- JSON.stringify(emails_content.body) %>`;
+        if(initialHtmlContent === "null")
+        {
+            quill.setText('');
+        } else {
+            quill.clipboard.dangerouslyPasteHTML(initialHtmlContent);
+        }
 
-        // chosenId.forEach(function(id){
-        //     document.getElementById(id.customer_id.toString()).checked = true;
-        // });
+
 
         document.getElementById('emailForm').addEventListener('submit', function () {
 
@@ -129,7 +131,8 @@
             document.getElementById('selectedContacts').value = JSON.stringify(selectedContacts);
 
             let justHtml = quill.root.innerHTML;
-            document.getElementById('pureHtml').value = justHtml;
+            emptyStringIfNeeded(justHtml);
+
 
             // Process the HTML content to meet Maijet API requirements
             let processedHtml = processHtmlForMaijet(justHtml);
@@ -172,6 +175,15 @@
             }
         } else {
             console.error('chosenId is not an array');
+        }
+    }
+
+    function emptyStringIfNeeded(htmlContent){
+        if(htmlContent === "<p><br></p>"){
+            document.getElementById('pureHtml').value = "";
+        }
+        else{
+            document.getElementById('pureHtml').value = justHtml;
         }
     }
 

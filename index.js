@@ -526,10 +526,20 @@ async function insertEmailContentTable(emailID, status, subject, body, template_
     try {
         //Need to query ID
         const timestamp = new Date();
-        await db.query(
-            "INSERT INTO email_content (id, status, subject, template_id, body, sent_at)  VALUES ($1, $2, $3, $4, $5, $6)",
-            [emailID, status, subject, template_id, body, timestamp]
-        )
+
+        if(body === ""){
+            await db.query(
+                "INSERT INTO email_content (id, status, subject, template_id, body, sent_at)  VALUES ($1, $2, $3, $4, $5, $6)",
+                [emailID, status, subject, template_id, null, timestamp]
+            )
+        } else {
+            await db.query(
+                "INSERT INTO email_content (id, status, subject, template_id, body, sent_at)  VALUES ($1, $2, $3, $4, $5, $6)",
+                [emailID, status, subject, template_id, body, timestamp]
+            )
+        }
+
+
 
         console.log("Inserted email_content table");
     } catch (error) {
@@ -718,9 +728,18 @@ async function deleteFromRecordTableByEmailIdAndCustomerId(modify_email, idToDel
 
 async function updateEmailContentTable(emailID, status, subject, pureHtml, template_id){
     try {
-        await db.query(
-            "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4) WHERE id = ($5)", [status, subject, template_id, pureHtml, emailID]
-        )
+
+        if(pureHtml === "")
+        {
+            await db.query(
+                "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4) WHERE id = ($5)", [status, subject, template_id, null, emailID]
+            )
+        } else {
+            await db.query(
+                "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4) WHERE id = ($5)", [status, subject, template_id, pureHtml, emailID]
+            )
+        }
+
 
         console.log("Updated: " + emailID + " in email content table");
 

@@ -54,8 +54,8 @@
                         <label for="text_part">Text Part:</label>
                         <div id="editor" style="height: 200px;"></div>
                     </div>
-                    <button type="submit" name="status" value="sent">Send Email</button>
-                    <button type="submit" name="status" value="saved">Save Email</button>
+                    <button style="background-color: rgb(62, 193, 62);" type="submit" name="status" value="sent">Send Email</button>
+                    <button style="background-color: rgb(238, 188, 23);" type="submit" name="status" value="saved">Save Email</button>
                 </div>
             </div>
 
@@ -108,7 +108,8 @@
         document.getElementById('selectedContacts').value = JSON.stringify(selectedContacts);
 
         let justHtml = quill.root.innerHTML;
-        document.getElementById('pureHtml').value = justHtml;
+
+        emptyStringIfNeeded(justHtml);
 
         // Process the HTML content to meet Maijet API requirements
         let processedHtml = processHtmlForMaijet(justHtml);
@@ -159,6 +160,15 @@
         return imgElements.length > 0;
     }
 
+
+    function emptyStringIfNeeded(htmlContent){
+        if(htmlContent === "<p><br></p>"){
+            document.getElementById('pureHtml').value = "";
+        }
+        else{
+            document.getElementById('pureHtml').value = justHtml;
+        }
+    }
 
     function processHtmlWithImg(htmlContent)
     {
