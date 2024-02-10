@@ -106,7 +106,7 @@ app.get("/view/:id", async(req, res) => {
         const chosenId = await queryCustomerIdByEmailIdFromRecord(reqID);
         const chosenIdJSON = JSON.stringify(chosenId);
         const emails = await queryEmailWithId(reqID);
-
+        console.log(emails_content.body);
 
         res.render("modify.ejs", {
             emails_content: emails_content,
@@ -213,10 +213,11 @@ app.post("/send_email", async (req, res) => {
             const email_id = req.body.email_id //From modify.ejs
             const isNewEmail = req.body.isNewEmail === "true"; // Convert string to boolean
             const pureHtml = req.body.pureHtml;
+            console.log(pureHtml);
             // const uploadedFile = req.file.buffer;
             const subject = req.body.subject;
             const htmlPart = req.body.modifiedHtmlContent;
-            const imageDataArray = JSON.parse(req.body.imageDataArray);
+            // const imageDataArray = JSON.parse(req.body.imageDataArray);
             const status = req.body.status;
             const sender = req.body.sender;
             const templateId = req.body.template_id
@@ -226,7 +227,7 @@ app.post("/send_email", async (req, res) => {
             }
             //Insert email
 
-            await process_contact_file(subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, email_id, selected_contacts, templateId);
+            await process_contact_file(subject, pureHtml, htmlPart, status, isNewEmail, email_id, selected_contacts, templateId);
 
             res.redirect("/main_page");
         } else {
@@ -431,7 +432,7 @@ app.listen(port, () => {
 // }
 
 //Process Customer Contact File
-async function process_contact_file(subject, pureHtml, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id, template_id)
+async function process_contact_file(subject, pureHtml, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id)
 {
 
     try {
@@ -446,7 +447,7 @@ async function process_contact_file(subject, pureHtml, htmlPart, imageDataArray,
             await updateEmailContentTable(modify_email, status, subject, pureHtml, template_id);
         }
 
-        await send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id, template_id);
+        await send_email(emailID, subject, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id);
 
 
     } catch (err) {
@@ -455,7 +456,7 @@ async function process_contact_file(subject, pureHtml, htmlPart, imageDataArray,
 }
 
 
-async function process_email(emailID, recipientName, recipientEmail, subject, html_part, imageDataArray, template_id) {
+async function process_email(emailID, recipientName, recipientEmail, subject, html_part, template_id) {
     try {
         let message = {
             From: {
@@ -473,10 +474,6 @@ async function process_email(emailID, recipientName, recipientEmail, subject, ht
         if(template_id.length > 0){
             message["TemplateID"] = parseInt(template_id);
             message["TemplateLanguage"] = true;
-        }
-
-        if (imageDataArray.length > 0) {
-            message["InlinedAttachments"] = imageDataArray;
         }
 
         //Send email
@@ -792,7 +789,7 @@ async function updateRecordTable(recipientEmail, emailID) {
 
 
 
-async function send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id, template_id){
+async function send_email(emailID, subject, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id){
     try {
         var newIds = [];
         const existingCustomerIDsResult = await db.query(
@@ -808,7 +805,7 @@ async function send_email(emailID, subject, htmlPart, imageDataArray, status, is
 
             if(status === 'sent')
             {
-                await process_email(emailID, customer_name, customer_email, subject, htmlPart, imageDataArray, template_id);
+                await process_email(emailID, customer_name, customer_email, subject, htmlPart, template_id);
             }
             else
             {

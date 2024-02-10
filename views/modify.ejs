@@ -97,7 +97,7 @@
 
             ['clean'],                                         // remove formatting button
 
-            ['link', 'image']
+            ['link']
             ];
 
 
@@ -138,16 +138,16 @@
             let processedHtml = processHtmlForMaijet(justHtml);
 
             // Set the processed HTML content in the hidden input field
-            if(checkIfOnlyHasImg(justHtml)){
-                document.getElementById('modifiedHtmlContent').value = processedHtml["modifiedHtmlContent"];
-                document.getElementById('imageDataArray').value = processedHtml["imageDataArray"];
-            }
+            // if(checkIfOnlyHasImg(justHtml)){
+            //     document.getElementById('modifiedHtmlContent').value = processedHtml["modifiedHtmlContent"];
+            //     document.getElementById('imageDataArray').value = processedHtml["imageDataArray"];
+            // }
 
-            else{
-                document.getElementById('modifiedHtmlContent').value = justHtml;
-                document.getElementById('imageDataArray').value = "[]";
+            // else{
+            //     document.getElementById('modifiedHtmlContent').value = justHtml;
+            //     document.getElementById('imageDataArray').value = "[]";
 
-            }
+            // }
     });
     
     function choose() {
