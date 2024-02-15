@@ -220,14 +220,17 @@ app.post("/send_email", async (req, res) => {
             // const imageDataArray = JSON.parse(req.body.imageDataArray);
             const status = req.body.status;
             const sender = req.body.sender;
-            const templateId = req.body.template_id
+            const templateId = req.body.template_id;
             
+            const selectedTime = req.body.selectedTime;
+            console.log("Time: ", selectedTime);
+
             if(isNewEmail){
                 await insertEmailTable(sender);
             }
             //Insert email
 
-            await process_contact_file(subject, pureHtml, htmlPart, status, isNewEmail, email_id, selected_contacts, templateId);
+            await process_email_content(subject, pureHtml, htmlPart, status, isNewEmail, email_id, selected_contacts, templateId, selectedTime);
 
             res.redirect("/main_page");
         } else {
@@ -369,72 +372,38 @@ app.listen(port, () => {
 
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
-// async function process_email_with_template(templateId, subject, selected_contacts_id, isNewEmail, status){
-//     try {
-//         //Get current email id
-//         const emailID = await getCurrentEmailId();
 
-//         if(isNewEmail){
-//             //Insert email_content
-//             await insertEmailWithTemplateToContentTable(templateId, status, subject, templateId);
-//         } else {
-//             await updateEmailContentTable(modify_email, status, subject, pureHtml);
-//         }
-
-//         await send_email(emailID, subject, htmlPart, imageDataArray, status, isNewEmail, modify_email, selected_contacts_id);
-
-
-//     } catch (err) {
-//         console.error("Error processing the uploaded file:", err);
-//     }
-// }
-
-
-// async function send_email_with_templateID(templateId, subject, recipientEmail) {
-//     try {
-//         let message = {
-//             From: {
-//                 Email: process.env.SENDER_EMAIL,
-//                 Name: "BET Club",
-//             },
-//             To: [
-//                 {
-//                     Email: recipientEmail,
-//                 },
-//             ],
-//             "TemplateID": templateId,
-//             "TemplateLanguage": true,
-//             "Subject": subject
-//         };
-//         //Send email
-//         const request = mailjet
-//             .post("send", { version: "v3.1" })
-//             .request({
-//                 Messages: [message],
-//             });
-
-//         request
-//             .then((result) => {
-//                 console.log(result.body);
-//             })
-//             .catch((err) => {
-//                 console.log("Could not send email with template");
-//                 throw err;
-//             });
+/**
+ * Upload Customer Contacts From Excel File
+ * @param {*} uploadedFile 
+ */
+async function upload_contact(uploadedFile){
+    try{
         
-//         //Insert record table
-//         await insertRecordTable(recipientEmail, emailID);
+        const workbook = xlsx.read(uploadedFile);
+        const workbook_sheet = workbook.SheetNames;
+        const workbook_response = xlsx.utils.sheet_to_json(
+            workbook.Sheets[workbook_sheet[0]]
+        );
 
-//     } catch (err) {
-//         console.error("Error in send_email_with_templateID function:", err);
-//         throw err;
-//     }
-// }
 
-//Process Customer Contact File
-async function process_contact_file(subject, pureHtml, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id)
+        for (const row of workbook_response) {
+            const name = row['Full Name'];
+            const recipientEmail = row['Email'];
+
+            //Insert customers' contacts
+            await insertCustomerContact(name, recipientEmail);
+        }
+    } catch (err){
+        console.log(err);
+    }
+}
+
+/*
+    Insert into email content table
+ */
+async function process_email_content(subject, pureHtml, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id, selectedTime)
 {
-
     try {
 
         //Get current email id
@@ -442,12 +411,12 @@ async function process_contact_file(subject, pureHtml, htmlPart, status, isNewEm
 
         if(isNewEmail){
             //Insert email_content
-            await insertEmailContentTable(emailID, status, subject, pureHtml, template_id);
+            await insertEmailContentTable(emailID, status, subject, pureHtml, template_id, selectedTime);
         } else {
-            await updateEmailContentTable(modify_email, status, subject, pureHtml, template_id);
+            await updateEmailContentTable(modify_email, status, subject, pureHtml, template_id, selectedTime);
         }
 
-        await send_email(emailID, subject, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id);
+        await process_email_record_and_send_email(emailID, subject, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id);
 
 
     } catch (err) {
@@ -456,7 +425,71 @@ async function process_contact_file(subject, pureHtml, htmlPart, status, isNewEm
 }
 
 
-async function process_email(emailID, recipientName, recipientEmail, subject, html_part, template_id) {
+/*
+    Insert or Update record table, Send or Save email base on Status
+*/
+async function process_email_record_and_send_email(emailID, subject, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id){
+    try {
+        var newIds = [];
+        const existingCustomerIDsResult = await db.query(
+            "SELECT customer_id FROM record WHERE email_id = $1",
+            [modify_email]
+        );
+        const existingCustomerIDs = existingCustomerIDsResult.rows.map(row => row.customer_id);
+
+        const contacts = await queryAllCustomerContactsById(selected_contacts_id);
+        for (const contact of contacts){
+            const customer_name = contact.name;
+            const customer_email = contact.email_address;
+
+            if(status === 'sent')
+            {
+                //Insert record table
+                await insertRecordTable(customer_email, emailID);
+                await send_email(customer_name, customer_email, subject, htmlPart, template_id);
+            }
+            else
+            {
+                if(isNewEmail)
+                {
+                    await insertRecordTable(customer_email, emailID);
+                }
+                else{
+                    const newId = await updateRecordTable(customer_email, modify_email);
+                    newIds.push(newId);
+                }
+
+            }
+        };
+        
+        if (status != "sent")
+        {
+            console.log("newIds: ", newIds);
+            // Determine IDs to delete from record table
+            const idsToDelete = existingCustomerIDs.filter(id => !newIds.includes(id));
+            console.log("idsToDelete: ", idsToDelete);
+
+            // Delete records from record table
+            if (idsToDelete.length > 0) {
+                for (const idToDelete of idsToDelete) {
+                    await deleteFromRecordTableByEmailIdAndCustomerId(modify_email, idToDelete);
+                }
+            }
+        }
+
+
+
+    } catch (error) {
+        console.log("Error in process_email_record_and_send_email function ", error)
+    }
+
+}
+
+
+/*
+    Send email
+*/
+async function send_email(recipientName, recipientEmail, subject, html_part, template_id) {
     try {
         let message = {
             From: {
@@ -493,15 +526,19 @@ async function process_email(emailID, recipientName, recipientEmail, subject, ht
                 throw err;
             });
         
-        //Insert record table
-        await insertRecordTable(recipientEmail, emailID);
+        // //Insert record table
+        // await insertRecordTable(recipientEmail, emailID);
 
     } catch (err) {
-        console.error("Error in process_email function:", err);
+        console.error("Error in send_email function:", err);
         throw err;
     }
 }  
 
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//Insert Methods
 
 async function insertEmailTable(sender_email)
 {
@@ -518,42 +555,30 @@ async function insertEmailTable(sender_email)
 };
 
 
-async function insertEmailContentTable(emailID, status, subject, body, template_id)
+async function insertEmailContentTable(emailID, status, subject, body, template_id, selectedTime)
 {
     try {
         //Need to query ID
         const timestamp = new Date();
 
-        if(body === ""){
-            await db.query(
-                "INSERT INTO email_content (id, status, subject, template_id, body, sent_at)  VALUES ($1, $2, $3, $4, $5, $6)",
-                [emailID, status, subject, template_id, null, timestamp]
-            )
-        } else {
-            await db.query(
-                "INSERT INTO email_content (id, status, subject, template_id, body, sent_at)  VALUES ($1, $2, $3, $4, $5, $6)",
-                [emailID, status, subject, template_id, body, timestamp]
-            )
+        if(selectedTime.length == 0){
+            selectedTime = null;
         }
 
+        if(body === ""){
+            body = null;
+        }
 
+        await db.query(
+            "INSERT INTO email_content (id, status, subject, template_id, body, created_at, sent_at)  VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            [emailID, status, subject, template_id, body, timestamp, selectedTime]
+        )
 
         console.log("Inserted email_content table");
     } catch (error) {
         console.error("Error inserting into the email table:", error);
     }
 };
-
-
-async function getCurrentEmailId()
-{
-    const emailIdResult = await db.query(
-        "SELECT id FROM email ORDER BY id DESC LIMIT 1"
-    );
-    const emailId = emailIdResult.rows[0].id;
-    return emailId;
-};
-
 
 async function insertCustomerContact(name, recipientEmail)
 {
@@ -596,6 +621,8 @@ async function insertRecordTable(recipientEmail, emailId)
 };
 
 
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//Query Methods
 
 async function queryAllCustomerContacts(){
     try{
@@ -663,6 +690,20 @@ async function queryEmailWithId(id){
     }
 }
 
+async function queryCustomerIdByEmailIdFromRecord(reqID){
+    try {
+        const result = await db.query(
+            "SELECT customer_id FROM record WHERE email_id = $1", [reqID]
+        )
+        return result.rows;
+    } catch (error) {
+        console.log("Error in queryCustomerIdByEmailIdFromRecord");
+        console.log(error);
+    }
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//Delete Methods
 
 async function deleteEmailFromDatabase(id){
     await deleteFromRecordTable(id);
@@ -723,17 +764,21 @@ async function deleteFromRecordTableByEmailIdAndCustomerId(modify_email, idToDel
 }
 
 
-async function updateEmailContentTable(emailID, status, subject, pureHtml, template_id){
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//Update Methods
+async function updateEmailContentTable(emailID, status, subject, pureHtml, template_id, selectedTime){
     try {
-
+        if(selectedTime.length == 0){
+            selectedTime = null;
+        }
         if(pureHtml === "")
         {
             await db.query(
-                "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4) WHERE id = ($5)", [status, subject, template_id, null, emailID]
+                "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4), sent_at = ($5) WHERE id = ($6)", [status, subject, template_id, null, selectedTime, emailID]
             )
         } else {
             await db.query(
-                "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4) WHERE id = ($5)", [status, subject, template_id, pureHtml, emailID]
+                "UPDATE email_content SET status = ($1), subject = ($2), template_id = ($3), body = ($4), sent_at = ($5) WHERE id = ($6)", [status, subject, template_id, pureHtml, selectedTime, emailID]
             )
         }
 
@@ -787,96 +832,28 @@ async function updateRecordTable(recipientEmail, emailID) {
     }
 }
 
-
-
-async function send_email(emailID, subject, htmlPart, status, isNewEmail, modify_email, selected_contacts_id, template_id){
-    try {
-        var newIds = [];
-        const existingCustomerIDsResult = await db.query(
-            "SELECT customer_id FROM record WHERE email_id = $1",
-            [modify_email]
-        );
-        const existingCustomerIDs = existingCustomerIDsResult.rows.map(row => row.customer_id);
-
-        const contacts = await queryAllCustomerContactsById(selected_contacts_id);
-        for (const contact of contacts){
-            const customer_name = contact.name;
-            const customer_email = contact.email_address;
-
-            if(status === 'sent')
-            {
-                await process_email(emailID, customer_name, customer_email, subject, htmlPart, template_id);
-            }
-            else
-            {
-                if(isNewEmail)
-                {
-                    await insertRecordTable(customer_email, emailID);
-                }
-                else{
-                    const newId = await updateRecordTable(customer_email, modify_email);
-                    newIds.push(newId);
-                }
-
-            }
-        };
-        
-        if (status != "sent")
-        {
-            console.log("newIds: ", newIds);
-            // Determine IDs to delete from record table
-            const idsToDelete = existingCustomerIDs.filter(id => !newIds.includes(id));
-            console.log("idsToDelete: ", idsToDelete);
-
-            // Delete records from record table
-            if (idsToDelete.length > 0) {
-                for (const idToDelete of idsToDelete) {
-                    await deleteFromRecordTableByEmailIdAndCustomerId(modify_email, idToDelete);
-                }
-            }
-        }
+async function getCurrentEmailId()
+{
+    const emailIdResult = await db.query(
+        "SELECT id FROM email ORDER BY id DESC LIMIT 1"
+    );
+    const emailId = emailIdResult.rows[0].id;
+    return emailId;
+};
 
 
 
-    } catch (error) {
-        console.log("Error in send_email function ", error)
-    }
-
-}
-
-
-async function upload_contact(uploadedFile){
-    try{
-        
-        const workbook = xlsx.read(uploadedFile);
-        const workbook_sheet = workbook.SheetNames;
-        const workbook_response = xlsx.utils.sheet_to_json(
-            workbook.Sheets[workbook_sheet[0]]
-        );
-
-
-        for (const row of workbook_response) {
-            const name = row['Full Name'];
-            const recipientEmail = row['Email'];
-
-            //Insert customers' contacts
-            await insertCustomerContact(name, recipientEmail);
-        }
-    } catch (err){
-        console.log(err);
-    }
-}
 
 
 
-async function queryCustomerIdByEmailIdFromRecord(reqID){
-    try {
-        const result = await db.query(
-            "SELECT customer_id FROM record WHERE email_id = $1", [reqID]
-        )
-        return result.rows;
-    } catch (error) {
-        console.log("Error in queryCustomerIdByEmailIdFromRecord");
-        console.log(error);
-    }
-}
+
+
+
+
+
+
+
+
+
+
+

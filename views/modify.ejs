@@ -15,6 +15,8 @@
     <title>Modify Page</title>
 </head>
 <body>
+    <%- include("partials/header.ejs") %>
+
     <div class="container">
 
         <form id="emailForm" action="/send_email" method="post">
@@ -55,10 +57,20 @@
                         <div id="editor" style="height: 200px;"></div>
                     </div>
 
-                    <% if(emails_content.status === 'saved') {%>
-                        <button style="background-color: rgb(62, 193, 62);" type="submit" name="status" value="sent">Send Email</button>
-                        <button style="background-color: rgb(238, 188, 23);" type="submit" name="status" value="saved">Save Email</button>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
+                        <label class="form-check-label" for="flexSwitchCheckDefault">Make it Automated Email</label>
+                    </div>
+                    <div hidden id="calendar">
+                        <input type="datetime-local" name="date" id="date">
+                    </div>
+                    <div>
+                        <% if(emails_content.status === 'saved') {%>
+                            <button style="background-color: rgb(62, 193, 62);" type="submit" name="status" value="sent">Send Email</button>
+                            <button style="background-color: rgb(238, 188, 23);" type="submit" name="status" value="saved">Save Email</button>
                         <% } %>
+                    </div>
+
                 </div>
             </div>
 
@@ -69,7 +81,10 @@
             <input type="hidden" id="pureHtml" name="pureHtml">
             <input type="hidden" id="email_id" name="email_id" value="<%=emails_content.id  %>">
             <input type="hidden" id="chosenId" name="chosenId" value="<%=chosenId %>">
+            <input type="hidden" id="chosenDate" name="chosenDate" value="<%=emails_content.sent_at %>">
+
             <input type="hidden" id="selectedContacts" name="selectedContacts">
+            <input type="hidden" name="selectedTime" id="selectedTime">
 
 
 
@@ -108,11 +123,34 @@
             },
         });
 
-        
-        
         document.addEventListener('DOMContentLoaded', function() {
             choose(); // Call choose() function when DOM content is loaded
+
+            var previousDateTime = document.getElementById('chosenDate').value
+            if (previousDateTime.length > 0){
+                var field = document.getElementById('flexSwitchCheckDefault');
+                var calendarDiv = document.getElementById('calendar');
+                calendarDiv.removeAttribute('hidden');
+                field.checked = true;
+                fillInCalendar();
+            }
         });
+
+        // Add event listener for the switch button
+        document.getElementById('flexSwitchCheckDefault').addEventListener('change', function() {
+            var calendarDiv = document.getElementById('calendar');
+
+            if (this.checked) {
+                // Switch is checked, show the calendar
+                calendarDiv.removeAttribute('hidden');
+                fillInCalendar(); // You may want to fill in the calendar content here as well
+
+            } else {
+                // Switch is unchecked, hide the calendar
+                calendarDiv.setAttribute('hidden', 'true');
+            }
+        });
+
 
         // Set the initial HTML content
         var initialHtmlContent = `<%- JSON.stringify(emails_content.body) %>`;
@@ -126,6 +164,15 @@
 
 
         document.getElementById('emailForm').addEventListener('submit', function () {
+            var field = document.getElementById('flexSwitchCheckDefault');
+            var selectedDateTime = document.getElementById('date').value;
+
+            if(!field.checked){
+                selectedDateTime="";
+            }
+
+            // Set the value of the hidden input field
+            document.getElementById('selectedTime').value = selectedDateTime;
 
             const selectedContacts = Array.from(document.querySelectorAll('input[name="chk"]:checked')).map(checkbox => parseInt(checkbox.value));
             document.getElementById('selectedContacts').value = JSON.stringify(selectedContacts);
@@ -176,6 +223,14 @@
         } else {
             console.error('chosenId is not an array');
         }
+    }
+
+    function fillInCalendar(){
+        var previousDateTime = document.getElementById('chosenDate').value
+
+        var calendarInput = document.getElementById('date');
+        calendarInput.value = previousDateTime;
+
     }
 
     function emptyStringIfNeeded(htmlContent){
