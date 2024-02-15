@@ -9,7 +9,7 @@
 <h1>Project Name: Email Automation System (In Progress)</h1>
 
 <h2>Description:</h2>
-<a href="https://youtu.be/rS08q43Z0mI" style="color: red; font-weight: bold;">Please Watch Demo Video For Cleare Explanation</a>
+<a href="https://youtu.be/yPbUqp5sNGQ" style="color: red; font-weight: bold;">Please Watch Demo Video For Cleare Explanation</a>
 <p>This project is an Email Marketing System developed using Node.js and Express.js. It allows users to compose and send emails or set the date and the emails will be automatically sent to customers in a list of chosen contacts, manage email templates, upload customer contacts from an Excel file, and view email history.</p>
 
 <h2>Features:</h2>
