@@ -11,7 +11,7 @@
 <a href="https://youtu.be/rS08q43Z0mI" style="color: red; font-weight: bold;">Watch Demo Video</a>
 
 <h2>Description:</h2>
-
+<a href="https://youtu.be/rS08q43Z0mI" style="color: red; font-weight: bold;">Please Watch Demo Video For Cleare Explanation</a>
 <p>This project is an Email Marketing System developed using Node.js and Express.js. It allows users to compose and send emails to a list of contacts, manage email templates, upload customer contacts from an Excel file, and view email history.</p>
 
 <h2>Features:</h2>
@@ -96,7 +96,7 @@ SENDER_EMAIL=&lt;Sender Email&gt;
 <h2>Authors:</h2>
 
 <ul>
-<li><a href="https://github.com/authorname">Author Name</a></li>
+<li><a href="https://github.com/dnhan1707">dnhan1707</a></li>
 </ul>
 
 <h2>Acknowledgements:</h2>
@@ -113,11 +113,7 @@ SENDER_EMAIL=&lt;Sender Email&gt;
 
 <h2>Contact:</h2>
 
-<p>For any inquiries or issues, please contact <a href="mailto:author@email.com">author@email.com</a>.</p>
-
-<h2>Note:</h2>
-
-<p>This README is a general template and should be customized according to the specific details and requirements of your project.</p>
+<p>For any inquiries or issues, please contact <a href="dnhan1707@gmail.com">dnhan1707@gmail.com</a>.</p>
 
 </body>
 </html>
