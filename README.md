@@ -7,7 +7,6 @@
 <body>
 
 <h1>Project Name: Email Automation System</h1>
-<a href="https://youtu.be/rS08q43Z0mI" style="color: red; font-weight: bold;">Watch Demo Video</a>
 
 <h2>Description:</h2>
 <a href="https://youtu.be/rS08q43Z0mI" style="color: red; font-weight: bold;">Please Watch Demo Video For Cleare Explanation</a>
