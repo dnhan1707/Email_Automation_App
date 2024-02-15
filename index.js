@@ -880,11 +880,3 @@ async function queryCustomerIdByEmailIdFromRecord(reqID){
         console.log(error);
     }
 }
-
-async function getTemplateIdByEmailId(id){
-
-}
-
-async function getSenderEmailByEmailId(id){
-
-}
