@@ -23,7 +23,8 @@ CREATE TABLE email_content(
     subject text,
     template_id text,
     body text,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at text
 );
 
 

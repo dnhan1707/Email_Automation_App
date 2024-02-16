@@ -216,7 +216,7 @@ app.post("/send_email", async (req, res) => {
             console.log(pureHtml);
             // const uploadedFile = req.file.buffer;
             const subject = req.body.subject;
-            const htmlPart = req.body.modifiedHtmlContent;
+            const htmlPart = req.body.pureHtml;
             // const imageDataArray = JSON.parse(req.body.imageDataArray);
             const status = req.body.status;
             const sender = req.body.sender;
