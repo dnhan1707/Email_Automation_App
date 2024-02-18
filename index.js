@@ -10,6 +10,11 @@ import session from "express-session"
 import passport from "passport"
 import { Strategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth2"
+import { v4 as uuidv4 } from 'uuid';
+// import AWS from "aws-sdk"
+import DynamoDB from "aws-sdk/clients/dynamodb.js";
+
+// AWS.config.update({region: "us-west-1"})
 
 
 dotenv.config();
@@ -40,6 +45,11 @@ const db = new pg.Client({
 
 db.connect();
 
+
+//AWS DynamoDB
+const dynamodb = new DynamoDB.DocumentClient({region: "us-west-1"});
+
+
 //app set up
 const app = express();
 const port = 3000;
@@ -60,6 +70,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
+await createAnOrg()
+
 //Endpoints
 app.get("/", async (req, res) => {
     res.render("homepage.ejs");
@@ -73,8 +85,8 @@ app.get("/main_page", async (req, res) => {
         res.redirect("/");
     }
 
-}); 
-    
+});
+
 app.get("/history", async (req, res) => {
     if(req.isAuthenticated()) {
         const emails = await queryAllEmail();
@@ -533,7 +545,7 @@ async function send_email(recipientName, recipientEmail, subject, html_part, tem
         console.error("Error in send_email function:", err);
         throw err;
     }
-}  
+}
 
 
 
@@ -552,7 +564,7 @@ async function insertEmailTable(sender_email)
     } catch (error) {
         console.error("Error inserting into the email table:", error);
     }
-};
+}
 
 
 async function insertEmailContentTable(emailID, status, subject, body, template_id, selectedTime)
@@ -578,7 +590,7 @@ async function insertEmailContentTable(emailID, status, subject, body, template_
     } catch (error) {
         console.error("Error inserting into the email table:", error);
     }
-};
+}
 
 async function insertCustomerContact(name, recipientEmail)
 {
@@ -618,7 +630,7 @@ async function insertRecordTable(recipientEmail, emailId)
     } catch (err) {
         console.error(`Customer with email ${recipientEmail} not found.`);
     }
-};
+}
 
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -839,21 +851,27 @@ async function getCurrentEmailId()
     );
     const emailId = emailIdResult.rows[0].id;
     return emailId;
-};
+}
 
 
+//---------------------------------------------------------------------------------------------
+//AWS DynamoDB
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+async function createAnOrg(){
+    const orgID = uuidv4;
+    var params = {
+        TableName : 'email_automation_project',
+        Item: {
+            PK: `ORG#${orgID}`,
+            SK: `#METADATA#${orgID}`,
+            name: "My Organization",
+            tier: "Free tier"
+        }
+      };
+      
+      
+      dynamodb.put(params, function(err, data) {
+        if (err) console.log(err);
+        else console.log(data);
+      });
+}
