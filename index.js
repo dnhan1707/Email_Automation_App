@@ -11,10 +11,15 @@ import passport from "passport"
 import { Strategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth2"
 import { v4 as uuidv4 } from 'uuid';
-// import AWS from "aws-sdk"
-import DynamoDB from "aws-sdk/clients/dynamodb.js";
+import {
+    DynamoDBClient,
+  } from "@aws-sdk/client-dynamodb";
 
-// AWS.config.update({region: "us-west-1"})
+import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+
+//AWS DynamoDB
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
 
 dotenv.config();
@@ -46,8 +51,7 @@ const db = new pg.Client({
 db.connect();
 
 
-//AWS DynamoDB
-const dynamodb = new DynamoDB.DocumentClient({region: "us-west-1"});
+
 
 
 //app set up
@@ -858,8 +862,8 @@ async function getCurrentEmailId()
 //AWS DynamoDB
 
 async function createAnOrg(){
-    const orgID = uuidv4;
-    var params = {
+    const orgID = uuidv4();
+    const params = new PutCommand({
         TableName : 'email_automation_project',
         Item: {
             PK: `ORG#${orgID}`,
@@ -867,11 +871,11 @@ async function createAnOrg(){
             name: "My Organization",
             tier: "Free tier"
         }
-      };
-      
-      
-      dynamodb.put(params, function(err, data) {
-        if (err) console.log(err);
-        else console.log(data);
       });
+      
+      await docClient.send(params);
+    //   dynamodb.put(params, function(err, data) {
+    //     if (err) console.log(err);
+    //     else console.log(data);
+    //   });
 }
