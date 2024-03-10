@@ -17,28 +17,34 @@ import {
 
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-//AWS DynamoDB
+//Basic connect with AWS DynamoDB
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-
+//Config the .env
 dotenv.config();
 
+//Saltround for Password Security
 const saltround = 10;
 
+
+//Connect with Mailjet
 const mailjet = Mailjet.apiConnect( 
     process.env.MJ_APIKEY_PUBLIC,
     process.env.MJ_APIKEY_PRIVATE,
 );
 
-// Multer setup
+
+
+// Multer setup for local memory
 const storage = multer.memoryStorage(); // Store the file in memory
 const upload = multer({ storage: storage });
 multer({
     limits: { fieldSize: 1000 * 1024 * 1024 }  //1GB
   })
 
-//Postgresql
+
+//Connect to Postgresql
 const db = new pg.Client({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -47,14 +53,10 @@ const db = new pg.Client({
     port: process.env.DB_PORT
 });
 
-
 db.connect();
 
 
-
-
-
-//app set up
+//Web app set up
 const app = express();
 const port = 3000;
 
@@ -74,11 +76,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
-await createAnOrg()
+//Create an Org for AWS DynamoDB
+// await createAnOrg()
 
-//Endpoints
+//--------------------------------------------------GET ROUTES-----------------------------------------------------------------------------------
+
+//Endpoints for the path
 app.get("/", async (req, res) => {
-    res.render("homepage.ejs");
+    res.render("homepage.ejs"); 
 });
 
 
@@ -135,6 +140,8 @@ app.get("/view/:id", async(req, res) => {
     }
 })
 
+
+//Endpoints for AUTHENTICATION
 app.get("/register", async(req, res) => {
     res.render("register.ejs");
 })
@@ -170,7 +177,7 @@ app.get(
     scope: ["profile", "email"],
 }))
 
-
+//Endpoints for funtionality of the app
 app.get("/compose_email", async (req, res) => {
 
     if(req.isAuthenticated()){
@@ -208,6 +215,10 @@ app.get("/send_email_with_mailjet_template", async (req, res) => {
 })
 
 
+//--------------------------------------------------POST ROUTES-----------------------------------------------------------------------------------
+
+
+//Endpoints for funtionality of the app
 app.post("/upload_contact", upload.single("excelFile"), async (req, res) => {
     if(req.isAuthenticated()){
         const uploadedFile = req.file.buffer;
@@ -217,7 +228,6 @@ app.post("/upload_contact", upload.single("excelFile"), async (req, res) => {
         res.redirect("/")
     }
 })
-
 
 
 app.post("/send_email", async (req, res) => {
@@ -305,6 +315,9 @@ app.post("/login",
     failureRedirect: "/login"
 }))
 
+//--------------------------------------------------SET UP FOR AUTHENTICATION-----------------------------------------------------------------------------------
+
+
 
 passport.use(
     "local",
@@ -387,7 +400,7 @@ app.listen(port, () => {
 });
 
 
-//-----------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------FLOW OF THE PROGRAM-----------------------------------------------------------------------------------
 
 /**
  * Upload Customer Contacts From Excel File
@@ -553,7 +566,7 @@ async function send_email(recipientName, recipientEmail, subject, html_part, tem
 
 
 
-//-----------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------DATA MANGING-----------------------------------------------------------------------------------
 //Insert Methods
 
 async function insertEmailTable(sender_email)
@@ -858,8 +871,8 @@ async function getCurrentEmailId()
 }
 
 
-//---------------------------------------------------------------------------------------------
-//AWS DynamoDB
+//--------------------------------------------------AWS DYNAMODB (STILL IN PROGRESS)-----------------------------------------------------------------------------------
+
 
 async function createAnOrg(){
     const orgID = uuidv4();
