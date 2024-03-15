@@ -278,7 +278,7 @@ app.post("/register", async(req, res) => {
 
     try {
         const result = await db.query(
-            "SELECT * FROM users WHERE email = $1", [loginEmail]
+            "SELECT * FROM user_account WHERE email = $1", [loginEmail]
         )
 
         if(result.rows.length > 0)
@@ -291,7 +291,7 @@ app.post("/register", async(req, res) => {
                     console.error("Error in hashing password");
                 }else{
                     const result = await db.query(
-                        "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
+                        "INSERT INTO user_account (email, password) VALUES ($1, $2) RETURNING *",
                         [loginEmail, hash]
                     );
 
@@ -324,7 +324,7 @@ passport.use(
     new Strategy(async function verify(username, password, cb){
     try {
         const result = await db.query(
-            "SELECT * FROM users WHERE email = $1", [username]
+            "SELECT * FROM user_account WHERE email = $1", [username]
         )
         
         if(result.rows.length > 0)
@@ -364,12 +364,12 @@ passport.use(
         }, async(accessToken, refreshToken, profile, cb) => {
             try{
                 const result = await db.query(
-                    "SELECT * FROM users WHERE email = $1", [profile.email]
+                    "SELECT * FROM user_account WHERE email = $1", [profile.email]
                 )
 
                 if(result.rows.length === 0){
                     const newUser = await db.query(
-                        "INSERT INTO users (email, password) VALUES ($1, $2)", [
+                        "INSERT INTO user_account (email, password) VALUES ($1, $2)", [
                             profile.email,
                             "google"
                         ]
