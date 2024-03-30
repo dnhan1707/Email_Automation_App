@@ -326,18 +326,27 @@ passport.use(
         const result = await db.query(
             "SELECT * FROM user_account WHERE email = $1", [username]
         )
-        
+        console.log("result for query from user account: ", result);
         if(result.rows.length > 0)
         {
             const user = result.rows[0];
+            console.log("user: ", user);
+
             const storedPassword = user.password;
+            console.log("storedPassword: ", storedPassword);
 
             //Verify password
             bcrypt.compare(password, storedPassword, (err, result) => {
+                console.log("password: ", password);
+                console.log("storedPassword: ", storedPassword);
+                console.log("result: ", result);
                 if(err){
                     return cb(err);
                 } else {
+                    console.log("After comparison");
+
                     if(result){
+                        console.log("Success");
                         return cb(null, user);
                         // res.render("main.ejs");
                     } else {
