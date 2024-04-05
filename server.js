@@ -273,26 +273,29 @@ app.post("/send_email", async (req, res) => {
 
 
 app.post("/register", async(req, res) => {
-    const loginEmail = req.body.loginEmail;
-    const loginPassword = req.body.loginPassword;
+    const registerEmail = req.body.registerEmail;
+    const registerPassword = req.body.registerPassword;
+
+    // console.log("registerEmail: ", registerEmail);
+    // console.log("registerPassword: ", registerPassword);
 
     try {
         const result = await db.query(
-            "SELECT * FROM user_account WHERE email = $1", [loginEmail]
+            "SELECT * FROM user_account WHERE email = $1", [registerEmail]
         )
 
         if(result.rows.length > 0)
         {
             res.send("Email Already exist, try to login please");
         } else {
-            bcrypt.hash(loginPassword, saltround, async (err, hash) => {
+            bcrypt.hash(registerPassword, saltround, async (err, hash) => {
                 if(err)
                 {
                     console.error("Error in hashing password");
                 }else{
                     const result = await db.query(
                         "INSERT INTO user_account (email, password) VALUES ($1, $2) RETURNING *",
-                        [loginEmail, hash]
+                        [registerEmail, hash]
                     );
 
                     const user = result.rows[0];
@@ -326,27 +329,27 @@ passport.use(
         const result = await db.query(
             "SELECT * FROM user_account WHERE email = $1", [username]
         )
-        console.log("result for query from user account: ", result);
+        // console.log("result for query from user account: ", result);
         if(result.rows.length > 0)
         {
             const user = result.rows[0];
-            console.log("user: ", user);
+            // console.log("user: ", user);
 
             const storedPassword = user.password;
-            console.log("storedPassword: ", storedPassword);
+            // console.log("storedPassword: ", storedPassword);
 
             //Verify password
             bcrypt.compare(password, storedPassword, (err, result) => {
-                console.log("password: ", password);
-                console.log("storedPassword: ", storedPassword);
-                console.log("result: ", result);
+                // console.log("password: ", password);
+                // console.log("storedPassword: ", storedPassword);
+                // console.log("result: ", result);
                 if(err){
                     return cb(err);
                 } else {
-                    console.log("After comparison");
+                    // console.log("After comparison");
 
                     if(result){
-                        console.log("Success");
+                        // console.log("Success");
                         return cb(null, user);
                         // res.render("main.ejs");
                     } else {
@@ -502,10 +505,10 @@ async function process_email_record_and_send_email(emailID, subject, htmlPart, s
         
         if (status != "sent")
         {
-            console.log("newIds: ", newIds);
+            // console.log("newIds: ", newIds);
             // Determine IDs to delete from record table
             const idsToDelete = existingCustomerIDs.filter(id => !newIds.includes(id));
-            console.log("idsToDelete: ", idsToDelete);
+            // console.log("idsToDelete: ", idsToDelete);
 
             // Delete records from record table
             if (idsToDelete.length > 0) {
